@@ -1,0 +1,325 @@
+/* ─── Variables ─────────────────────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --creme:      #F5F0E8;
+  --creme-dark: #EDE7D9;
+  --encre:      #1A1814;
+  --encre-soft: #3D3930;
+  --bordeaux:   #8B2635;
+  --bordeaux-light: #B5404F;
+  --gris:       #9E9A93;
+  --gris-light: #D4CFC6;
+  --blanc:      #FDFAF5;
+
+  --font-titre: 'Playfair Display', Georgia, serif;
+  --font-body:  'DM Sans', sans-serif;
+  --font-mono:  'DM Mono', monospace;
+
+  --radius:     8px;
+  --radius-lg:  16px;
+  --shadow:     0 2px 12px rgba(26,24,20,0.08);
+  --shadow-lg:  0 8px 32px rgba(26,24,20,0.12);
+}
+
+/* ─── Reset & Base ───────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-size: 16px; }
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--creme);
+  color: var(--encre);
+  min-height: 100vh;
+  /* Texture papier subtile */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+}
+
+/* ─── Typographie ────────────────────────────────────────────────────────────── */
+h1 {
+  font-family: var(--font-titre);
+  font-size: 2.4rem;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+h2 {
+  font-family: var(--font-titre);
+  font-size: 1.5rem;
+  font-weight: 400;
+  font-style: italic;
+}
+
+h3 {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--gris);
+}
+
+/* ─── Layout ─────────────────────────────────────────────────────────────────── */
+.page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 3rem 2rem;
+}
+
+.page-header {
+  margin-bottom: 3rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid var(--gris-light);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.page-header-left { display: flex; flex-direction: column; gap: 0.4rem; }
+.page-subtitle {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--gris);
+  font-weight: 300;
+}
+
+/* ─── Composants ─────────────────────────────────────────────────────────────── */
+
+/* Bouton principal */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: var(--encre);
+  color: var(--creme);
+  border: none;
+  border-radius: var(--radius);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s;
+  text-decoration: none;
+}
+.btn:hover { background: var(--encre-soft); transform: translateY(-1px); }
+.btn:active { transform: translateY(0); }
+
+/* Bouton secondaire */
+.btn-ghost {
+  background: transparent;
+  color: var(--encre);
+  border: 1px solid var(--gris-light);
+}
+.btn-ghost:hover { background: var(--creme-dark); }
+
+/* Bouton bordeaux */
+.btn-accent {
+  background: var(--bordeaux);
+}
+.btn-accent:hover { background: var(--bordeaux-light); }
+
+/* Champs de formulaire */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.field label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--gris);
+}
+
+.field input[type="text"],
+.field input[type="email"],
+.field input[type="password"],
+.field textarea,
+.field select {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: var(--blanc);
+  border: 1px solid var(--gris-light);
+  border-radius: var(--radius);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  color: var(--encre);
+  transition: border-color 0.2s;
+  -webkit-appearance: none;
+}
+
+.field input:focus,
+.field textarea:focus,
+.field select:focus {
+  outline: none;
+  border-color: var(--encre);
+}
+
+/* Groupe de chips (radio/checkbox visuels) */
+.chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.chip {
+  position: relative;
+}
+
+.chip input { position: absolute; opacity: 0; width: 0; height: 0; }
+
+.chip label {
+  display: inline-block;
+  padding: 0.4rem 0.9rem;
+  background: var(--blanc);
+  border: 1px solid var(--gris-light);
+  border-radius: 100px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  color: var(--encre-soft);
+  user-select: none;
+}
+
+.chip input:checked + label {
+  background: var(--encre);
+  border-color: var(--encre);
+  color: var(--creme);
+}
+
+.chip label:hover {
+  border-color: var(--encre);
+}
+
+/* Badge objectif */
+.badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  background: var(--creme-dark);
+  border-radius: 100px;
+  font-size: 0.75rem;
+  color: var(--encre-soft);
+  font-family: var(--font-body);
+}
+
+/* Message d'état */
+.msg {
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+.msg-error { background: #FDE8EA; color: var(--bordeaux); border: 1px solid #F5C0C5; }
+.msg-ok    { background: #E8F5EE; color: #2D6A4F; border: 1px solid #B7DFC9; }
+.msg-info  { background: var(--creme-dark); color: var(--encre-soft); border: 1px solid var(--gris-light); }
+
+/* Séparateur décoratif */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 2rem 0;
+  color: var(--gris);
+  font-size: 0.8rem;
+}
+.divider::before, .divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--gris-light);
+}
+
+/* Spinner */
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--gris-light);
+  border-top-color: var(--encre);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: inline-block;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Nav utilisateur */
+.nav-user {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.85rem;
+  color: var(--gris);
+}
+.nav-user strong { color: var(--encre); }
+.nav-user button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--gris);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  padding: 0;
+  text-decoration: underline;
+}
+.nav-user button:hover { color: var(--encre); }
+
+/* ─── Responsive ─────────────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .page { padding: 2rem 1.25rem; }
+  h1 { font-size: 1.8rem; }
+  .page-header { flex-direction: column; align-items: flex-start; gap: 1rem; }
+}
+
+/* ─── Barre de navigation globale ───────────────────────────────────────────── */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: var(--blanc);
+  border-top: 1px solid var(--gris-light);
+  display: flex;
+  padding: 0;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.bottom-nav a {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0.6rem 0.5rem;
+  text-decoration: none;
+  color: var(--gris);
+  font-size: 0.65rem;
+  font-family: var(--font-body);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  gap: 0.25rem;
+  transition: color 0.15s;
+  border-top: 2px solid transparent;
+}
+
+.bottom-nav a:hover { color: var(--encre); }
+
+.bottom-nav a.active {
+  color: var(--bordeaux);
+  border-top-color: var(--bordeaux);
+}
+
+.bottom-nav .nav-icon {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+/* Compenser la hauteur de la nav dans le contenu */
+body.has-bottom-nav .page {
+  padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+}

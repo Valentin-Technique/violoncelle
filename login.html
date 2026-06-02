@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Connexion — Séances Violoncelle</title>
+  <link rel="stylesheet" href="css/global.css" />
+  <style>
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+
+    .login-wrap {
+      width: 100%;
+      max-width: 440px;
+    }
+
+    .login-brand {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+
+    .login-brand .logo-mark {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      letter-spacing: 0.2em;
+      color: var(--gris);
+      text-transform: uppercase;
+      margin-bottom: 0.75rem;
+    }
+
+    .login-brand h1 {
+      font-size: 2rem;
+      line-height: 1.15;
+    }
+
+    .login-brand h1 em {
+      display: block;
+      font-weight: 400;
+      font-style: italic;
+      color: var(--bordeaux);
+    }
+
+    .login-card {
+      background: var(--blanc);
+      border: 1px solid var(--gris-light);
+      border-radius: var(--radius-lg);
+      padding: 2.5rem;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid var(--gris-light);
+      margin-bottom: 2rem;
+    }
+
+    .tab-btn {
+      flex: 1;
+      background: none;
+      border: none;
+      padding: 0.75rem;
+      font-family: var(--font-body);
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--gris);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: color 0.2s, border-color 0.2s;
+    }
+
+    .tab-btn.active {
+      color: var(--encre);
+      border-bottom-color: var(--encre);
+    }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    .raison-msg {
+      text-align: center;
+      padding: 1rem;
+      background: var(--creme-dark);
+      border-radius: var(--radius);
+      font-size: 0.875rem;
+      color: var(--encre-soft);
+      margin-bottom: 1.5rem;
+    }
+
+    .btn-full { width: 100%; justify-content: center; }
+
+    .mention {
+      margin-top: 1.5rem;
+      font-size: 0.8rem;
+      color: var(--gris);
+      text-align: center;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-wrap">
+    <div class="login-brand">
+      <div class="logo-mark">Outil de pratique</div>
+      <h1>Séances<em>Violoncelle</em></h1>
+    </div>
+
+    <div class="login-card">
+      <div id="raison-container"></div>
+
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('connexion')">Se connecter</button>
+        <button class="tab-btn" onclick="switchTab('inscription')">S'inscrire</button>
+      </div>
+
+      <!-- Connexion -->
+      <div id="tab-connexion" class="tab-panel active">
+        <div id="msg-connexion"></div>
+        <div class="field">
+          <label for="login-email">Adresse email</label>
+          <input type="email" id="login-email" placeholder="vous@exemple.com" autocomplete="email" />
+        </div>
+        <div class="field">
+          <label for="login-password">Mot de passe</label>
+          <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" />
+        </div>
+        <button class="btn btn-full" onclick="seConnecter()">
+          <span id="btn-connexion-label">Connexion</span>
+        </button>
+      </div>
+
+      <!-- Inscription -->
+      <div id="tab-inscription" class="tab-panel">
+        <div id="msg-inscription"></div>
+        <div class="field">
+          <label for="reg-prenom">Prénom</label>
+          <input type="text" id="reg-prenom" placeholder="Votre prénom" />
+        </div>
+        <div class="field">
+          <label for="reg-nom">Nom</label>
+          <input type="text" id="reg-nom" placeholder="Votre nom" />
+        </div>
+        <div class="field">
+          <label for="reg-email">Adresse email</label>
+          <input type="email" id="reg-email" placeholder="vous@exemple.com" autocomplete="email" />
+        </div>
+        <div class="field">
+          <label for="reg-password">Mot de passe</label>
+          <input type="password" id="reg-password" placeholder="8 caractères minimum" autocomplete="new-password" />
+        </div>
+        <button class="btn btn-full" onclick="sInscrire()">
+          <span id="btn-inscription-label">Créer mon compte</span>
+        </button>
+        <p class="mention">Votre compte sera activé par le professeur avant la première connexion.</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/supabase.js"></script>
+  <script>
+    // Affichage du motif de redirection
+    const params = new URLSearchParams(window.location.search);
+    const raison = params.get("raison");
+    if (raison === "inactif") {
+      document.getElementById("raison-container").innerHTML =
+        `<div class="raison-msg">Votre compte est en attente de validation par le professeur.</div>`;
+    }
+
+    // Rediriger si déjà connecté
+    (async () => {
+      const session = await getSession();
+      if (session) window.location.href = "index.html";
+    })();
+
+    function switchTab(tab) {
+      document.querySelectorAll(".tab-btn").forEach((b, i) => {
+        b.classList.toggle("active", (i === 0 && tab === "connexion") || (i === 1 && tab === "inscription"));
+      });
+      document.getElementById("tab-connexion").classList.toggle("active", tab === "connexion");
+      document.getElementById("tab-inscription").classList.toggle("active", tab === "inscription");
+    }
+
+    function setMsg(id, texte, type = "error") {
+      const el = document.getElementById(id);
+      el.innerHTML = texte ? `<div class="msg msg-${type}">${texte}</div>` : "";
+    }
+
+    async function seConnecter() {
+      const email    = document.getElementById("login-email").value.trim();
+      const password = document.getElementById("login-password").value;
+      setMsg("msg-connexion", "");
+
+      if (!email || !password) {
+        setMsg("msg-connexion", "Merci de remplir tous les champs.");
+        return;
+      }
+
+      document.getElementById("btn-connexion-label").innerHTML = '<span class="spinner"></span>';
+
+      const { error } = await db.auth.signInWithPassword({ email, password });
+
+      if (error) {
+        document.getElementById("btn-connexion-label").textContent = "Connexion";
+        setMsg("msg-connexion", "Email ou mot de passe incorrect.");
+        return;
+      }
+
+      const user = await getCurrentUser();
+      if (!user || user.statut !== "actif") {
+        await db.auth.signOut();
+        document.getElementById("btn-connexion-label").textContent = "Connexion";
+        setMsg("msg-connexion", "Votre compte est en attente de validation.");
+        return;
+      }
+
+      window.location.href = "index.html";
+    }
+
+    async function sInscrire() {
+      const prenom   = document.getElementById("reg-prenom").value.trim();
+      const nom      = document.getElementById("reg-nom").value.trim();
+      const email    = document.getElementById("reg-email").value.trim();
+      const password = document.getElementById("reg-password").value;
+      setMsg("msg-inscription", "");
+
+      if (!prenom || !nom || !email || !password) {
+        setMsg("msg-inscription", "Merci de remplir tous les champs.");
+        return;
+      }
+      if (password.length < 8) {
+        setMsg("msg-inscription", "Le mot de passe doit contenir au moins 8 caractères.");
+        return;
+      }
+
+      document.getElementById("btn-inscription-label").innerHTML = '<span class="spinner"></span>';
+
+      const { data, error } = await db.auth.signUp({ email, password });
+
+      if (error) {
+        document.getElementById("btn-inscription-label").textContent = "Créer mon compte";
+        setMsg("msg-inscription", "Erreur : " + error.message);
+        return;
+      }
+
+      // Créer le profil dans la table profiles
+      await db.from("profiles").insert({
+        id:      data.user.id,
+        prenom:  prenom,
+        nom:     nom,
+        email:   email,
+        role:    "eleve",
+        statut:  "en_attente",
+      });
+
+      await db.auth.signOut();
+      document.getElementById("btn-inscription-label").textContent = "Créer mon compte";
+      setMsg("msg-inscription",
+        "Compte créé. Votre professeur va valider votre accès sous peu.", "ok");
+    }
+
+    // Connexion au Enter
+    document.addEventListener("keydown", e => {
+      if (e.key === "Enter") {
+        const activeTab = document.querySelector(".tab-panel.active").id;
+        if (activeTab === "tab-connexion") seConnecter();
+        else sInscrire();
+      }
+    });
+  </script>
+</body>
+</html>

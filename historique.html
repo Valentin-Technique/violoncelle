@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Historique — Violoncelle</title>
+  <link rel="stylesheet" href="css/global.css" />
+  <style>
+    /* Filtre élève (prof uniquement) */
+    .filter-bar {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+    }
+
+    .filter-bar label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--gris);
+    }
+
+    .filter-bar select {
+      padding: 0.5rem 0.75rem;
+      background: var(--blanc);
+      border: 1px solid var(--gris-light);
+      border-radius: var(--radius);
+      font-family: var(--font-body);
+      font-size: 0.875rem;
+      color: var(--encre);
+    }
+
+    /* Liste des séances */
+    .seances-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      background: var(--gris-light);
+      border: 1px solid var(--gris-light);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    .seance-row {
+      background: var(--blanc);
+      padding: 1.25rem 1.5rem;
+      cursor: pointer;
+      transition: background 0.15s;
+      display: flex;
+      align-items: flex-start;
+      gap: 1.5rem;
+    }
+
+    .seance-row:hover { background: var(--creme-dark); }
+
+    .seance-date {
+      min-width: 100px;
+      flex-shrink: 0;
+    }
+
+    .seance-date .jour {
+      font-family: var(--font-mono);
+      font-size: 1.1rem;
+      font-weight: 500;
+      color: var(--encre);
+    }
+
+    .seance-date .mois {
+      font-size: 0.75rem;
+      color: var(--gris);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .seance-body { flex: 1; }
+
+    .seance-blocs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .seance-duree {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--gris);
+    }
+
+    .seance-note {
+      font-size: 0.82rem;
+      color: var(--encre-soft);
+      margin-top: 0.4rem;
+      font-style: italic;
+    }
+
+    /* Détail déplié */
+    .seance-detail {
+      display: none;
+      background: var(--creme-dark);
+      padding: 1.25rem 1.5rem;
+      border-top: 1px solid var(--gris-light);
+    }
+
+    .seance-detail.visible { display: block; }
+
+    .detail-blocs {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .detail-bloc {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      font-size: 0.875rem;
+    }
+
+    .detail-type {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--gris);
+      min-width: 80px;
+    }
+
+    .detail-titre { flex: 1; }
+    .detail-duree { font-family: var(--font-mono); font-size: 0.8rem; color: var(--gris); }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: var(--gris);
+    }
+
+    .empty-state h2 {
+      font-family: var(--font-titre);
+      color: var(--gris);
+      margin-bottom: 0.5rem;
+    }
+  </style>
+</head>
+<body class="has-bottom-nav">
+  <div class="page">
+    <header class="page-header">
+      <div class="page-header-left">
+        <div class="page-subtitle">Historique</div>
+        <h1>Mes séances</h1>
+      </div>
+      <div class="nav-user" id="nav-user"></div>
+    </header>
+
+    <div id="filter-bar" class="filter-bar" style="display:none">
+      <label>Élève</label>
+      <select id="filtre-eleve" onchange="chargerSeances()">
+        <option value="">Tous les élèves</option>
+      </select>
+    </div>
+
+    <div id="seances-container">
+      <div style="color:var(--gris);font-size:0.875rem;">Chargement…</div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/supabase.js"></script>
+  <script>
+    let currentUser = null;
+
+    const MOIS = ["Jan","Fév","Mar","Avr","Mai","Juin","Juil","Aoû","Sep","Oct","Nov","Déc"];
+
+    (async () => {
+      currentUser = await requireAuth(["eleve", "prof"]);
+      if (!currentUser) return;
+
+      document.getElementById("nav-user").innerHTML = `
+        <strong>${currentUser.prenom} ${currentUser.nom}</strong>
+        <a href="index.html" style="color:var(--gris);font-size:0.85rem;text-decoration:underline;">Nouvelle séance</a>
+        <button onclick="signOut()">Déconnexion</button>
+      `;
+
+      // Si prof : charger la liste des élèves
+      if (currentUser.role === "prof") {
+        const { data: eleves } = await db
+          .from("profiles")
+          .select("id, prenom, nom")
+          .eq("role", "eleve")
+          .eq("statut", "actif")
+          .order("nom");
+
+        if (eleves?.length) {
+          const sel = document.getElementById("filtre-eleve");
+          eleves.forEach(e => {
+            const opt = document.createElement("option");
+            opt.value = e.id;
+            opt.textContent = `${e.prenom} ${e.nom}`;
+            sel.appendChild(opt);
+          });
+          document.getElementById("filter-bar").style.display = "flex";
+
+          // Mettre à jour le titre
+          document.querySelector("h1").textContent = "Toutes les séances";
+        }
+      }
+
+      await chargerSeances();
+    })();
+
+    async function chargerSeances() {
+      const container = document.getElementById("seances-container");
+      container.innerHTML = `<div style="color:var(--gris);font-size:0.875rem;">Chargement…</div>`;
+
+      let query = supabase
+        .from("seances")
+        .select("*, profiles(prenom, nom)")
+        .order("date", { ascending: false });
+
+      if (currentUser.role === "eleve") {
+        query = query.eq("user_id", currentUser.id);
+      } else {
+        const filtreEleve = document.getElementById("filtre-eleve")?.value;
+        if (filtreEleve) query = query.eq("user_id", filtreEleve);
+      }
+
+      const { data: seances } = await query;
+
+      if (!seances?.length) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <h2>Aucune séance</h2>
+            <p>Les séances enregistrées apparaîtront ici.</p>
+          </div>
+        `;
+        return;
+      }
+
+      const list = document.createElement("div");
+      list.className = "seances-list";
+
+      seances.forEach((s, i) => {
+        const date   = new Date(s.date);
+        const blocs  = (() => { try { return JSON.parse(s.blocs) } catch { return [] } })();
+        const travail = blocs.filter(b => b.type !== "pause" && b.type !== "sons-files");
+
+        const row = document.createElement("div");
+        row.innerHTML = `
+          <div class="seance-row" onclick="toggleDetail(${i})">
+            <div class="seance-date">
+              <div class="jour">${date.getDate()}</div>
+              <div class="mois">${MOIS[date.getMonth()]} ${date.getFullYear()}</div>
+            </div>
+            <div class="seance-body">
+              ${currentUser.role === "prof" && s.profiles
+                ? `<div style="font-size:0.75rem;color:var(--bordeaux);margin-bottom:0.25rem;text-transform:uppercase;letter-spacing:0.1em;font-weight:500;">${s.profiles.prenom} ${s.profiles.nom}</div>`
+                : ""}
+              <div class="seance-blocs">
+                ${travail.map(b => `<span class="badge">${b.titre || b.type}</span>`).join("")}
+              </div>
+              <div class="seance-duree">${s.duree_reelle || "?"} min</div>
+              ${s.note ? `<div class="seance-note">"${s.note}"</div>` : ""}
+            </div>
+          </div>
+          <div class="seance-detail" id="detail-${i}">
+            <div class="detail-blocs">
+              ${travail.map(b => `
+                <div class="detail-bloc">
+                  <span class="detail-type">${b.type}</span>
+                  <span class="detail-titre">${b.titre || "—"}</span>
+                  <span class="detail-duree">${b.duree || "?"} min</span>
+                </div>
+              `).join("")}
+            </div>
+          </div>
+        `;
+        list.appendChild(row);
+      });
+
+      container.innerHTML = "";
+      container.appendChild(list);
+    }
+
+    function toggleDetail(index) {
+      const el = document.getElementById(`detail-${index}`);
+      el.classList.toggle("visible");
+    }
+  </script>
+  <nav class="bottom-nav">
+    <a href="index.html" id="nav-seance">
+      <span class="nav-icon">♩</span>
+      <span>Séance</span>
+    </a>
+    <a href="stats.html" id="nav-stats">
+      <span class="nav-icon">◈</span>
+      <span>Stats</span>
+    </a>
+    <a href="historique.html" id="nav-historique">
+      <span class="nav-icon">◷</span>
+      <span>Historique</span>
+    </a>
+    <a href="admin.html" id="nav-admin" style="display:none">
+      <span class="nav-icon">⚙</span>
+      <span>Admin</span>
+    </a>
+  </nav>
+  <script>
+    (function() {
+      const page = location.pathname.split("/").pop() || "index.html";
+      const map  = {
+        "index.html":      "nav-seance",
+        "preview.html":    "nav-seance",
+        "stats.html":      "nav-stats",
+        "historique.html": "nav-historique",
+        "admin.html":      "nav-admin"
+      };
+      const activeId = map[page];
+      if (activeId) {
+        const el = document.getElementById(activeId);
+        if (el) el.classList.add("active");
+      }
+      document.addEventListener("DOMContentLoaded", async () => {
+        if (typeof getCurrentUser === "function") {
+          const u = await getCurrentUser();
+          if (u?.role === "prof") {
+            const a = document.getElementById("nav-admin");
+            if (a) a.style.display = "flex";
+          }
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

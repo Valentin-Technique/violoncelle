@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Administration — Violoncelle</title>
+  <link rel="stylesheet" href="css/global.css" />
+  <style>
+    .tabs-nav {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid var(--gris-light);
+      margin-bottom: 2.5rem;
+    }
+
+    .tab-nav-btn {
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      padding: 0.75rem 1.5rem;
+      font-family: var(--font-body);
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--gris);
+      cursor: pointer;
+      transition: color 0.2s, border-color 0.2s;
+    }
+
+    .tab-nav-btn.active {
+      color: var(--encre);
+      border-bottom-color: var(--encre);
+    }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+
+    .data-table th {
+      text-align: left;
+      padding: 0.75rem 1rem;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--gris);
+      border-bottom: 1px solid var(--gris-light);
+      font-weight: 500;
+    }
+
+    .data-table td {
+      padding: 0.875rem 1rem;
+      border-bottom: 1px solid var(--creme-dark);
+      vertical-align: middle;
+    }
+
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table tr:hover td { background: var(--creme-dark); }
+
+    .statut-badge {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      border-radius: 100px;
+      font-size: 0.7rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .statut-actif      { background: #E8F5EE; color: #2D6A4F; }
+    .statut-en_attente { background: #FEF3CD; color: #856404; }
+
+    .btn-sm { padding: 0.3rem 0.75rem; font-size: 0.78rem; }
+
+    .niveau-select {
+      padding: 0.3rem 0.5rem;
+      border: 1px solid var(--gris-light);
+      border-radius: var(--radius);
+      font-family: var(--font-body);
+      font-size: 0.8rem;
+      background: var(--blanc);
+      color: var(--encre);
+      cursor: pointer;
+    }
+
+    .niveau-select:focus { outline: none; border-color: var(--encre); }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0 1.5rem;
+    }
+
+    @media (max-width: 600px) {
+      .form-grid { grid-template-columns: 1fr; }
+    }
+
+    .form-grid .field.full { grid-column: 1 / -1; }
+
+    .pieces-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-top: 2rem;
+    }
+
+    .piece-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      background: var(--blanc);
+      border: 1px solid var(--gris-light);
+      border-radius: var(--radius);
+      padding: 0.875rem 1.25rem;
+      font-size: 0.875rem;
+    }
+
+    .piece-type   { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--gris); min-width: 80px; }
+    .piece-titre  { font-weight: 500; flex: 1; }
+    .piece-meta   { color: var(--gris); font-size: 0.8rem; }
+    .piece-niveau { font-family: var(--font-mono); font-size: 0.75rem; color: var(--bordeaux); min-width: 30px; }
+    .piece-actions { display: flex; gap: 0.5rem; margin-left: auto; }
+
+    .upload-zone {
+      border: 2px dashed var(--gris-light);
+      border-radius: var(--radius);
+      padding: 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      position: relative;
+    }
+
+    .upload-zone:hover { border-color: var(--encre); background: var(--creme-dark); }
+    .upload-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+    .upload-zone .upload-icon     { font-size: 2rem; margin-bottom: 0.5rem; }
+    .upload-zone .upload-label    { font-size: 0.875rem; color: var(--gris); }
+    .upload-zone .upload-filename { font-size: 0.875rem; font-weight: 500; color: var(--encre); margin-top: 0.5rem; }
+
+    .stat-row { display: flex; gap: 1.5rem; margin-bottom: 2rem; }
+
+    .stat-card {
+      background: var(--blanc);
+      border: 1px solid var(--gris-light);
+      border-radius: var(--radius);
+      padding: 1rem 1.5rem;
+      flex: 1;
+    }
+
+    .stat-val { font-family: var(--font-mono); font-size: 1.8rem; font-weight: 500; color: var(--bordeaux); }
+    .stat-lbl { font-size: 0.75rem; color: var(--gris); text-transform: uppercase; letter-spacing: 0.1em; }
+
+    .saved-flash { color: var(--bordeaux); font-size: 0.75rem; margin-left: 0.5rem; opacity: 0; transition: opacity 0.3s; }
+    .saved-flash.visible { opacity: 1; }
+  </style>
+</head>
+<body class="has-bottom-nav">
+  <div class="page">
+    <header class="page-header">
+      <div class="page-header-left">
+        <div class="page-subtitle">Administration</div>
+        <h1>Tableau de bord</h1>
+      </div>
+      <div class="nav-user" id="nav-user">
+        <button onclick="signOut()">Déconnexion</button>
+      </div>
+    </header>
+
+    <div id="msg-admin"></div>
+
+    <div class="stat-row">
+      <div class="stat-card">
+        <div class="stat-val" id="count-pieces">—</div>
+        <div class="stat-lbl">Pièces</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val" id="count-eleves">—</div>
+        <div class="stat-lbl">Élèves actifs</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val" id="count-attente">—</div>
+        <div class="stat-lbl">En attente</div>
+      </div>
+    </div>
+
+    <div class="tabs-nav">
+      <button class="tab-nav-btn active" onclick="switchTab('repertoire')">Répertoire</button>
+      <button class="tab-nav-btn" onclick="switchTab('eleves')">Élèves</button>
+    </div>
+
+    <!-- Tab : Répertoire -->
+    <div id="tab-repertoire" class="tab-content active">
+      <h2 style="margin-bottom:1.5rem">Ajouter une pièce</h2>
+      <div id="msg-piece"></div>
+
+      <div class="form-grid">
+        <div class="field">
+          <label>Titre *</label>
+          <input type="text" id="p-titre" placeholder="Sonate en do majeur" />
+        </div>
+        <div class="field">
+          <label>Auteur</label>
+          <input type="text" id="p-auteur" placeholder="J. S. Bach" />
+        </div>
+        <div class="field">
+          <label>Recueil / Collection</label>
+          <input type="text" id="p-recueil" placeholder="Suites pour violoncelle seul" />
+        </div>
+        <div class="field">
+          <label>Époque *</label>
+          <input type="text" id="p-epoque" placeholder="Baroque, Classique, Romantique…" />
+        </div>
+        <div class="field">
+          <label>Type *</label>
+          <select id="p-type">
+            <option value="">— Choisir —</option>
+            <option value="gammes">Gammes</option>
+            <option value="exercice">Exercice</option>
+            <option value="etude">Étude</option>
+            <option value="repertoire">Répertoire</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Niveau</label>
+          <select id="p-niveau">
+            <option value="">— Tous niveaux —</option>
+            <option value="B1">B1</option>
+            <option value="B2">B2</option>
+            <option value="B3">B3</option>
+            <option value="M1">M1</option>
+            <option value="M2">M2</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Instrument *</label>
+          <input type="text" id="p-instrument" placeholder="Violoncelle" value="Violoncelle" />
+        </div>
+        <div class="field">
+          <label>Tonalité</label>
+          <input type="text" id="p-tonalite" placeholder="Do majeur, La mineur…" />
+        </div>
+        <div class="field full">
+          <label>Objectifs travaillés (séparés par des virgules)</label>
+          <input type="text" id="p-objectifs" placeholder="Intonation, Archet, Vibrato" />
+        </div>
+        <div class="field full">
+          <label>Partition PDF</label>
+          <div class="upload-zone">
+            <input type="file" id="p-pdf" accept=".pdf" onchange="onFileSelect(this)" />
+            <div class="upload-icon">↑</div>
+            <div class="upload-label">Cliquer ou glisser un fichier PDF</div>
+            <div class="upload-filename" id="upload-filename" style="display:none"></div>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn btn-accent" onclick="ajouterPiece()" id="btn-ajouter">
+        Ajouter à la bibliothèque
+      </button>
+
+      <div class="divider">Bibliothèque actuelle</div>
+
+      <div id="pieces-list" class="pieces-list">
+        <div style="color:var(--gris);font-size:0.875rem;">Chargement…</div>
+      </div>
+    </div>
+
+    <!-- Tab : Élèves -->
+    <div id="tab-eleves" class="tab-content">
+      <div id="msg-eleves"></div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Nom</th>
+            <th>Email</th>
+            <th>Statut</th>
+            <th>Niveau</th>
+            <th>Séances</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="eleves-body">
+          <tr><td colspan="6" style="color:var(--gris)">Chargement…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/supabase.js"></script>
+  <script>
+    let repertoire = [];
+    let eleves     = [];
+    let pdfFile    = null;
+
+    (async () => {
+      const user = await requireAuth(["prof"]);
+      if (!user) return;
+
+      document.getElementById("nav-user").innerHTML = `
+        <strong>${user.prenom} ${user.nom}</strong>
+        <a href="index.html" style="color:var(--gris);font-size:0.85rem;text-decoration:underline;">Retour</a>
+        <button onclick="signOut()">Déconnexion</button>
+      `;
+
+      await Promise.all([chargerRepertoire(), chargerEleves()]);
+    })();
+
+    function switchTab(tab) {
+      document.querySelectorAll(".tab-nav-btn").forEach((b, i) => {
+        b.classList.toggle("active",
+          (tab === "repertoire" && i === 0) || (tab === "eleves" && i === 1));
+      });
+      document.getElementById("tab-repertoire").classList.toggle("active", tab === "repertoire");
+      document.getElementById("tab-eleves").classList.toggle("active", tab === "eleves");
+    }
+
+    // ─── Répertoire ──────────────────────────────────────────────────────────
+    async function chargerRepertoire() {
+      const { data } = await db.from("repertoire").select("*").order("titre");
+      repertoire = data || [];
+      document.getElementById("count-pieces").textContent = repertoire.length;
+      afficherPieces();
+    }
+
+    function afficherPieces() {
+      const list = document.getElementById("pieces-list");
+      if (!repertoire.length) {
+        list.innerHTML = `<div style="color:var(--gris);font-size:0.875rem;">Aucune pièce pour l'instant.</div>`;
+        return;
+      }
+
+      list.innerHTML = repertoire.map(p => `
+        <div class="piece-row">
+          <span class="piece-type">${p.type}</span>
+          <span class="piece-titre">${p.titre}</span>
+          <span class="piece-meta">${p.auteur || ""} ${p.epoque ? "· " + p.epoque : ""}</span>
+          <span class="piece-niveau">${p.niveau || ""}</span>
+          <div class="piece-actions">
+            ${p.pdf_url ? `<a href="${p.pdf_url}" target="_blank" class="btn btn-ghost btn-sm" style="text-decoration:none">PDF</a>` : ""}
+            <button class="btn btn-ghost btn-sm" onclick="supprimerPiece('${p.id}')">Supprimer</button>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    function onFileSelect(input) {
+      pdfFile = input.files[0] || null;
+      const fn = document.getElementById("upload-filename");
+      if (pdfFile) { fn.textContent = pdfFile.name; fn.style.display = "block"; }
+      else { fn.style.display = "none"; }
+    }
+
+    async function ajouterPiece() {
+      const titre      = document.getElementById("p-titre").value.trim();
+      const auteur     = document.getElementById("p-auteur").value.trim();
+      const recueil    = document.getElementById("p-recueil").value.trim();
+      const epoque     = document.getElementById("p-epoque").value.trim();
+      const type       = document.getElementById("p-type").value;
+      const niveau     = document.getElementById("p-niveau").value;
+      const instrument = document.getElementById("p-instrument").value.trim();
+      const tonalite   = document.getElementById("p-tonalite").value.trim();
+      const objectifs  = document.getElementById("p-objectifs").value.trim();
+
+      const msgEl = document.getElementById("msg-piece");
+      msgEl.innerHTML = "";
+
+      if (!titre || !epoque || !type || !instrument) {
+        msgEl.innerHTML = `<div class="msg msg-error">Merci de remplir les champs obligatoires (*).</div>`;
+        return;
+      }
+
+      const btn = document.getElementById("btn-ajouter");
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> Ajout en cours…';
+
+      let pdf_url = null;
+      if (pdfFile) {
+        const ext      = pdfFile.name.split(".").pop();
+        const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+        const { error: uploadError } = await db.storage
+          .from("partitions")
+          .upload(filename, pdfFile, { contentType: "application/pdf" });
+
+        if (uploadError) {
+          msgEl.innerHTML = `<div class="msg msg-error">Erreur upload PDF : ${uploadError.message}</div>`;
+          btn.disabled = false;
+          btn.textContent = "Ajouter à la bibliothèque";
+          return;
+        }
+        const { data: urlData } = db.storage.from("partitions").getPublicUrl(filename);
+        pdf_url = urlData.publicUrl;
+      }
+
+      const { error } = await db.from("repertoire").insert({
+        titre, auteur, recueil, epoque, type, instrument,
+        niveau: niveau || null,
+        tonalite: tonalite || null,
+        objectifs, pdf_url
+      });
+
+      btn.disabled = false;
+      btn.textContent = "Ajouter à la bibliothèque";
+
+      if (error) {
+        msgEl.innerHTML = `<div class="msg msg-error">Erreur : ${error.message}</div>`;
+        return;
+      }
+
+      msgEl.innerHTML = `<div class="msg msg-ok">« ${titre} » ajouté avec succès.</div>`;
+      ["p-titre","p-auteur","p-recueil","p-epoque","p-tonalite","p-objectifs"].forEach(id => {
+        document.getElementById(id).value = "";
+      });
+      document.getElementById("p-type").value  = "";
+      document.getElementById("p-niveau").value = "";
+      document.getElementById("p-pdf").value   = "";
+      document.getElementById("upload-filename").style.display = "none";
+      pdfFile = null;
+      await chargerRepertoire();
+    }
+
+    async function supprimerPiece(id) {
+      if (!confirm("Supprimer cette pièce définitivement ?")) return;
+      await db.from("repertoire").delete().eq("id", id);
+      await chargerRepertoire();
+    }
+
+    // ─── Élèves ──────────────────────────────────────────────────────────────
+    async function chargerEleves() {
+      const { data } = await db
+        .from("profiles")
+        .select("*, seances(count)")
+        .eq("role", "eleve")
+        .order("nom");
+
+      eleves = data || [];
+      const actifs  = eleves.filter(e => e.statut === "actif").length;
+      const attente = eleves.filter(e => e.statut === "en_attente").length;
+
+      document.getElementById("count-eleves").textContent = actifs;
+      document.getElementById("count-attente").textContent = attente;
+
+      const tbody = document.getElementById("eleves-body");
+      if (!eleves.length) {
+        tbody.innerHTML = `<tr><td colspan="6" style="color:var(--gris)">Aucun élève inscrit.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = eleves.map(e => `
+        <tr>
+          <td><strong>${e.prenom} ${e.nom}</strong></td>
+          <td style="color:var(--gris)">${e.email}</td>
+          <td>
+            <span class="statut-badge statut-${e.statut}">
+              ${e.statut === "actif" ? "Actif" : "En attente"}
+            </span>
+          </td>
+          <td>
+            <select class="niveau-select" onchange="mettreAjourNiveau('${e.id}', this)">
+              <option value="">—</option>
+              ${["B1","B2","B3","M1","M2"].map(n =>
+                `<option value="${n}" ${e.niveau === n ? "selected" : ""}>${n}</option>`
+              ).join("")}
+            </select>
+            <span class="saved-flash" id="flash-${e.id}">✓ Enregistré</span>
+          </td>
+          <td style="font-family:var(--font-mono)">${e.seances?.[0]?.count ?? 0}</td>
+          <td>
+            ${e.statut === "en_attente"
+              ? `<button class="btn btn-sm" onclick="validerEleve('${e.id}')">Valider</button>`
+              : `<button class="btn btn-ghost btn-sm" onclick="desactiverEleve('${e.id}')">Désactiver</button>`
+            }
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    async function mettreAjourNiveau(id, select) {
+      const niveau = select.value || null;
+      await db.from("profiles").update({ niveau }).eq("id", id);
+      const flash = document.getElementById(`flash-${id}`);
+      flash.classList.add("visible");
+      setTimeout(() => flash.classList.remove("visible"), 2000);
+    }
+
+    async function validerEleve(id) {
+      await db.from("profiles").update({ statut: "actif" }).eq("id", id);
+      await chargerEleves();
+    }
+
+    async function desactiverEleve(id) {
+      if (!confirm("Désactiver cet élève ?")) return;
+      await db.from("profiles").update({ statut: "en_attente" }).eq("id", id);
+      await chargerEleves();
+    }
+  </script>
+  <nav class="bottom-nav">
+    <a href="index.html" id="nav-seance">
+      <span class="nav-icon">♩</span>
+      <span>Séance</span>
+    </a>
+    <a href="stats.html" id="nav-stats">
+      <span class="nav-icon">◈</span>
+      <span>Stats</span>
+    </a>
+    <a href="historique.html" id="nav-historique">
+      <span class="nav-icon">◷</span>
+      <span>Historique</span>
+    </a>
+    <a href="admin.html" id="nav-admin" style="display:none">
+      <span class="nav-icon">⚙</span>
+      <span>Admin</span>
+    </a>
+  </nav>
+  <script>
+    (function() {
+      const page = location.pathname.split("/").pop() || "index.html";
+      const map  = {
+        "index.html":      "nav-seance",
+        "preview.html":    "nav-seance",
+        "stats.html":      "nav-stats",
+        "historique.html": "nav-historique",
+        "admin.html":      "nav-admin"
+      };
+      const activeId = map[page];
+      if (activeId) {
+        const el = document.getElementById(activeId);
+        if (el) el.classList.add("active");
+      }
+      document.addEventListener("DOMContentLoaded", async () => {
+        if (typeof getCurrentUser === "function") {
+          const u = await getCurrentUser();
+          if (u?.role === "prof") {
+            const a = document.getElementById("nav-admin");
+            if (a) a.style.display = "flex";
+          }
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nouvelle séance — Violoncelle</title>
+  <link rel="stylesheet" href="css/global.css" />
+  <style>
+    .form-section {
+      margin-bottom: 2.5rem;
+    }
+
+    .form-section > h3 {
+      margin-bottom: 1rem;
+    }
+
+    /* Durée : grille compacte */
+    .duree-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+      gap: 0.5rem;
+    }
+
+    .duree-chip input { position: absolute; opacity: 0; width: 0; height: 0; }
+
+    .duree-chip label {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 0.6rem 0.4rem;
+      background: var(--blanc);
+      border: 1px solid var(--gris-light);
+      border-radius: var(--radius);
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      color: var(--encre-soft);
+    }
+
+    .duree-chip label .min-label {
+      font-size: 0.65rem;
+      color: var(--gris);
+      margin-top: 0.1rem;
+    }
+
+    .duree-chip input:checked + label {
+      background: var(--encre);
+      border-color: var(--encre);
+      color: var(--creme);
+    }
+
+    .duree-chip input:checked + label .min-label {
+      color: var(--gris-light);
+    }
+
+    /* Toggle sons filés */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem 1.25rem;
+      background: var(--blanc);
+      border: 1px solid var(--gris-light);
+      border-radius: var(--radius);
+      cursor: pointer;
+    }
+
+    .toggle {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+
+    .toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+
+    .toggle-track {
+      position: absolute;
+      inset: 0;
+      background: var(--gris-light);
+      border-radius: 100px;
+      transition: background 0.2s;
+    }
+
+    .toggle-thumb {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 18px;
+      height: 18px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.2s;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+    }
+
+    .toggle input:checked ~ .toggle-track { background: var(--encre); }
+    .toggle input:checked ~ .toggle-thumb { transform: translateX(20px); }
+
+    .toggle-label {
+      flex: 1;
+    }
+    .toggle-label strong { display: block; font-size: 0.9rem; font-weight: 500; }
+    .toggle-label span { font-size: 0.8rem; color: var(--gris); }
+
+    /* Bouton générer */
+    .generate-btn {
+      width: 100%;
+      justify-content: center;
+      padding: 1rem 2rem;
+      font-size: 1rem;
+    }
+
+    /* Loader overlay */
+    #loader {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(245, 240, 232, 0.9);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+    #loader.visible { display: flex; }
+    #loader p {
+      font-family: var(--font-titre);
+      font-style: italic;
+      color: var(--encre-soft);
+    }
+
+    .loading-bar {
+      width: 200px;
+      height: 2px;
+      background: var(--gris-light);
+      border-radius: 100px;
+      overflow: hidden;
+    }
+    .loading-bar::after {
+      content: "";
+      display: block;
+      height: 100%;
+      background: var(--encre);
+      animation: load 1.5s ease-in-out infinite;
+    }
+    @keyframes load {
+      0%   { width: 0%; margin-left: 0; }
+      50%  { width: 70%; margin-left: 15%; }
+      100% { width: 0%; margin-left: 100%; }
+    }
+
+    /* Erreur filtrage */
+    #filter-warning {
+      display: none;
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body class="has-bottom-nav">
+  <div class="page">
+    <header class="page-header">
+      <div class="page-header-left">
+        <div class="page-subtitle">Outil de pratique</div>
+        <h1>Nouvelle séance</h1>
+      </div>
+      <div class="nav-user" id="nav-user">
+        <span>Chargement…</span>
+      </div>
+    </header>
+
+    <div id="msg-page"></div>
+
+    <form id="form" novalidate>
+
+      <div class="form-section">
+        <h3>Instrument</h3>
+        <div id="instrument-options" class="chip-group"></div>
+      </div>
+
+      <div class="form-section">
+        <h3>Époque</h3>
+        <div id="epoque-options" class="chip-group"></div>
+      </div>
+
+      <div class="form-section">
+        <h3>Objectifs</h3>
+        <div id="objectifs-options" class="chip-group"></div>
+      </div>
+
+      <div class="form-section">
+        <h3>Durée de séance</h3>
+        <div class="duree-grid" id="duree-options"></div>
+      </div>
+
+      <div class="form-section">
+        <label class="toggle-row" for="sonsFiles">
+          <div class="toggle">
+            <input type="checkbox" id="sonsFiles" />
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </div>
+          <div class="toggle-label">
+            <strong>Sons filés</strong>
+            <span>10 minutes d'échauffement en début de séance</span>
+          </div>
+        </label>
+      </div>
+
+      <div id="filter-warning">
+        <div class="msg msg-info">
+          Aucune pièce ne correspond exactement à vos critères. Essayez d'élargir les objectifs ou de changer d'époque.
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-accent generate-btn">
+        Générer la séance
+      </button>
+
+    </form>
+  </div>
+
+  <!-- Loader -->
+  <div id="loader">
+    <div class="loading-bar"></div>
+    <p>Construction de votre séance…</p>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/session.js"></script>
+  <script>
+    let currentUser = null;
+    let repertoire  = [];
+
+    const DUREES = [20, 25, 30, 35, 40, 45, 50, 60, 90, 120, 180];
+
+    // ─── Init ────────────────────────────────────────────────────────────────
+    (async () => {
+      currentUser = await requireAuth(["eleve", "prof"]);
+      if (!currentUser) return;
+
+      // Nav utilisateur
+      document.getElementById("nav-user").innerHTML = `
+        <strong>${currentUser.prenom} ${currentUser.nom}</strong>
+        ${currentUser.role === "prof" ? '<a href="admin.html" style="color:var(--bordeaux);text-decoration:none;font-size:0.85rem;">Admin</a>' : ""}
+        <a href="stats.html" style="color:var(--gris);font-size:0.85rem;text-decoration:underline;">Stats</a>
+        <button onclick="signOut()">Déconnexion</button>
+      `;
+
+      // Charger la bibliothèque
+      const { data, error } = await db.from("repertoire").select("*");
+      if (error || !data) {
+        document.getElementById("msg-page").innerHTML =
+          `<div class="msg msg-error">Impossible de charger la bibliothèque. Réessayez.</div>`;
+        return;
+      }
+      repertoire = data;
+
+      // Construire les filtres depuis les données
+      const valeurs = (champ) => [
+        ...new Set(data.flatMap(e =>
+          typeof e[champ] === "string"
+            ? e[champ].split(",").map(x => x.trim()).filter(Boolean)
+            : []
+        ))
+      ].sort();
+
+      buildRadioChips("instrument-options", "instrument", valeurs("instrument"));
+      buildRadioChips("epoque-options",     "epoque",     valeurs("epoque"));
+      buildCheckboxChips("objectifs-options", valeurs("objectifs"));
+      buildDuree();
+    })();
+
+    // ─── Builders de chips ───────────────────────────────────────────────────
+    function buildRadioChips(containerId, name, values) {
+      const c = document.getElementById(containerId);
+      values.forEach((val, i) => {
+        const wrap = document.createElement("div");
+        wrap.className = "chip";
+        const id = `${name}_${i}`;
+        wrap.innerHTML = `
+          <input type="radio" name="${name}" id="${id}" value="${val}" ${i === 0 ? "checked" : ""}>
+          <label for="${id}">${val}</label>
+        `;
+        c.appendChild(wrap);
+      });
+    }
+
+    function buildCheckboxChips(containerId, values) {
+      const c = document.getElementById(containerId);
+      values.forEach((val, i) => {
+        const wrap = document.createElement("div");
+        wrap.className = "chip";
+        const id = `obj_${i}`;
+        wrap.innerHTML = `
+          <input type="checkbox" name="objectifs" id="${id}" value="${val}">
+          <label for="${id}">${val}</label>
+        `;
+        c.appendChild(wrap);
+      });
+    }
+
+    function buildDuree() {
+      const c = document.getElementById("duree-options");
+      DUREES.forEach(d => {
+        const wrap = document.createElement("div");
+        wrap.className = "chip duree-chip";
+        const id = `duree_${d}`;
+        const heures = d >= 60 ? `${d/60}h` : "";
+        wrap.innerHTML = `
+          <input type="radio" name="duree" id="${id}" value="${d}" ${d === 60 ? "checked" : ""}>
+          <label for="${id}">
+            <span>${d} min</span>
+            ${heures ? `<span class="min-label">${heures}</span>` : ""}
+          </label>
+        `;
+        c.appendChild(wrap);
+      });
+    }
+
+    // ─── Soumission ──────────────────────────────────────────────────────────
+    document.getElementById("form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const instrument = document.querySelector('input[name="instrument"]:checked')?.value;
+      const epoque     = document.querySelector('input[name="epoque"]:checked')?.value;
+      const objectifs  = Array.from(document.querySelectorAll('input[name="objectifs"]:checked')).map(cb => cb.value);
+      const duree      = parseInt(document.querySelector('input[name="duree"]:checked')?.value || "60", 10);
+      const sonsFiles  = document.getElementById("sonsFiles").checked;
+
+      document.getElementById("filter-warning").style.display = "none";
+
+      if (!instrument || !epoque || objectifs.length === 0) {
+        document.getElementById("msg-page").innerHTML =
+          `<div class="msg msg-error">Merci de sélectionner un instrument, une époque et au moins un objectif.</div>`;
+        return;
+      }
+
+      document.getElementById("msg-page").innerHTML = "";
+      document.getElementById("loader").classList.add("visible");
+
+      // Récupérer les IDs récents pour éviter les répétitions
+      const recentIds = await getRecentIds(currentUser.id);
+
+      const options = { instrument, epoque, objectifs, duree, sonsFiles, recentIds, niveauEleve: currentUser.niveau || null };
+      const blocs   = construireSession(repertoire, options);
+
+      if (blocs.filter(b => b.type !== "pause" && b.type !== "sons-files").length === 0) {
+        document.getElementById("loader").classList.remove("visible");
+        document.getElementById("filter-warning").style.display = "block";
+        return;
+      }
+
+      // Sauvegarder en sessionStorage et naviguer vers preview
+      sauvegarderSessionLocale(blocs, options);
+      window.location.href = "preview.html";
+    });
+  </script>
+  <nav class="bottom-nav">
+    <a href="index.html" id="nav-seance">
+      <span class="nav-icon">♩</span>
+      <span>Séance</span>
+    </a>
+    <a href="stats.html" id="nav-stats">
+      <span class="nav-icon">◈</span>
+      <span>Stats</span>
+    </a>
+    <a href="historique.html" id="nav-historique">
+      <span class="nav-icon">◷</span>
+      <span>Historique</span>
+    </a>
+    <a href="admin.html" id="nav-admin" style="display:none">
+      <span class="nav-icon">⚙</span>
+      <span>Admin</span>
+    </a>
+  </nav>
+  <script>
+    (function() {
+      const page = location.pathname.split("/").pop() || "index.html";
+      const map  = {
+        "index.html":      "nav-seance",
+        "preview.html":    "nav-seance",
+        "stats.html":      "nav-stats",
+        "historique.html": "nav-historique",
+        "admin.html":      "nav-admin"
+      };
+      const activeId = map[page];
+      if (activeId) {
+        const el = document.getElementById(activeId);
+        if (el) el.classList.add("active");
+      }
+      document.addEventListener("DOMContentLoaded", async () => {
+        if (typeof getCurrentUser === "function") {
+          const u = await getCurrentUser();
+          if (u?.role === "prof") {
+            const a = document.getElementById("nav-admin");
+            if (a) a.style.display = "flex";
+          }
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

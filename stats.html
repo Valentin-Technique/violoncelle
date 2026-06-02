@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Statistiques — Violoncelle</title>
+  <link rel="stylesheet" href="css/global.css" />
+  <style>
+    /* ── Sélecteur élève (prof) ─────────────────────────────────────── */
+    .eleve-selector {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 2.5rem;
+      padding: 1rem 1.25rem;
+      background: var(--blanc);
+      border: 1px solid var(--gris-light);
+      border-radius: var(--radius);
+    }
+
+    .eleve-selector label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--gris);
+      white-space: nowrap;
+    }
+
+    .eleve-selector select {
+      flex: 1;
+      padding: 0.4rem 0.75rem;
+      background: var(--creme);
+      border: 1px solid var(--gris-light);
+      border-radius: var(--radius);
+      font-family: var(--font-body);
+      font-size: 0.875rem;
+      color: var(--encre);
+    }
+
+    /* ── Période ─────────────────────────────────────────────────────── */
+    .periode-tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .periode-btn {
+      padding: 0.4rem 1rem;
+      border: 1px solid var(--gris-light);
+      border-radius: 100px;
+      background: var(--blanc);
+      font-family: var(--font-body);
+      font-size: 0.8rem;
+      color: var(--gris);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .periode-btn.active {
+      background: var(--encre);
+      border-color: var(--encre);
+      color: var(--creme);
+    }
+
+    /* ── KPIs ────────────────────────────────────────────────────────── */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    @media (max-width: 700px) {
+      .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    .kpi-card {
+      background: var(--blanc);
+      border: 1px solid var(--gris-light);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem 1.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .kpi-card::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--bordeaux), var(--bordeaux-light));
+    }
+
+    .kpi-val {
+      font-family: var(--font-mono);
+      font-size: 2rem;
+      font-weight: 500;
+      color: var(--encre);
+      line-height: 1;
+      margin-bottom: 0.4rem;
+    }
+
+    .kpi-lbl {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--gris);
+    }
+
+    .kpi-sub {
+      font-size: 0.75rem;
+      color: var(--gris);
+      margin-top: 0.25rem;
+    }
+
+    /* ── Sections ────────────────────────────────────────────────────── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    @media (max-width: 700px) {
+      .stats-grid { grid-template-columns: 1fr; }
+    }
+
+    .stat-section {
+      background: var(--blanc);
+      border: 1px solid var(--gris-light);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+    }
+
+    .stat-section.full { grid-column: 1 / -1; }
+
+    .section-title {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--gris);
+      margin-bottom: 1.25rem;
+      font-weight: 500;
+    }
+
+    /* ── Calendrier de régularité ─────────────────────────────────────── */
+    .cal-grid {
+      display: flex;
+      gap: 3px;
+      flex-wrap: wrap;
+    }
+
+    .cal-week {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .cal-day {
+      width: 13px;
+      height: 13px;
+      border-radius: 2px;
+      background: var(--creme-dark);
+      position: relative;
+      cursor: default;
+    }
+
+    .cal-day[data-min="0"]  { background: var(--creme-dark); }
+    .cal-day[data-min="1"]  { background: #F5C0C5; }
+    .cal-day[data-min="2"]  { background: #E07080; }
+    .cal-day[data-min="3"]  { background: var(--bordeaux-light); }
+    .cal-day[data-min="4"]  { background: var(--bordeaux); }
+
+    .cal-months {
+      display: flex;
+      gap: 3px;
+      margin-bottom: 4px;
+    }
+
+    .cal-month-label {
+      font-size: 0.65rem;
+      color: var(--gris);
+      font-family: var(--font-mono);
+    }
+
+    /* ── Courbe SVG ───────────────────────────────────────────────────── */
+    .chart-svg {
+      width: 100%;
+      height: 160px;
+      overflow: visible;
+    }
+
+    .chart-line {
+      fill: none;
+      stroke: var(--bordeaux);
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .chart-area {
+      fill: url(#grad);
+      opacity: 0.15;
+    }
+
+    .chart-dot {
+      fill: var(--bordeaux);
+    }
+
+    .chart-label {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      fill: var(--gris);
+    }
+
+    /* ── Donut répartition ────────────────────────────────────────────── */
+    .donut-wrap {
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+    }
+
+    .donut-svg {
+      width: 130px;
+      height: 130px;
+      flex-shrink: 0;
+    }
+
+    .donut-legend {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      flex: 1;
+    }
+
+    .legend-row {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 0.8rem;
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .legend-label { flex: 1; color: var(--encre-soft); }
+    .legend-pct   { font-family: var(--font-mono); font-size: 0.8rem; color: var(--encre); }
+
+    /* ── Pièces les + travaillées ─────────────────────────────────────── */
+    .top-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+
+    .top-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 0.85rem;
+    }
+
+    .top-rank {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--gris);
+      min-width: 20px;
+    }
+
+    .top-bar-wrap {
+      flex: 1;
+      height: 6px;
+      background: var(--creme-dark);
+      border-radius: 100px;
+      overflow: hidden;
+    }
+
+    .top-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--bordeaux), var(--bordeaux-light));
+      border-radius: 100px;
+      transition: width 0.6s ease;
+    }
+
+    .top-titre { min-width: 120px; font-size: 0.8rem; }
+    .top-count { font-family: var(--font-mono); font-size: 0.75rem; color: var(--gris); white-space: nowrap; }
+
+    /* ── État vide ────────────────────────────────────────────────────── */
+    .empty-stats {
+      text-align: center;
+      padding: 3rem;
+      color: var(--gris);
+      font-style: italic;
+      font-family: var(--font-titre);
+    }
+
+    /* ── Streak badge ─────────────────────────────────────────────────── */
+    .streak-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-size: 0.7rem;
+      color: var(--bordeaux);
+      font-family: var(--font-mono);
+    }
+  </style>
+</head>
+<body class="has-bottom-nav">
+  <div class="page">
+    <header class="page-header">
+      <div class="page-header-left">
+        <div class="page-subtitle">Analyse</div>
+        <h1>Statistiques</h1>
+      </div>
+      <div class="nav-user" id="nav-user"></div>
+    </header>
+
+    <!-- Sélecteur élève (prof uniquement) -->
+    <div class="eleve-selector" id="eleve-selector" style="display:none">
+      <label>Élève</label>
+      <select id="filtre-eleve" onchange="chargerStats()">
+        <option value="moi">Moi-même</option>
+      </select>
+    </div>
+
+    <!-- Période -->
+    <div class="periode-tabs">
+      <button class="periode-btn active" onclick="setPeriode(30, this)">30 jours</button>
+      <button class="periode-btn" onclick="setPeriode(90, this)">3 mois</button>
+      <button class="periode-btn" onclick="setPeriode(365, this)">1 an</button>
+      <button class="periode-btn" onclick="setPeriode(9999, this)">Tout</button>
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-val" id="kpi-heures">—</div>
+        <div class="kpi-lbl">Heures de travail</div>
+        <div class="kpi-sub" id="kpi-heures-sub"></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-val" id="kpi-seances">—</div>
+        <div class="kpi-lbl">Séances</div>
+        <div class="kpi-sub" id="kpi-seances-sub"></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-val" id="kpi-streak">—</div>
+        <div class="kpi-lbl">Streak actuel</div>
+        <div class="kpi-sub" id="kpi-streak-sub"></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-val" id="kpi-moy">—</div>
+        <div class="kpi-lbl">Moy. par séance</div>
+        <div class="kpi-sub" id="kpi-moy-sub"></div>
+      </div>
+    </div>
+
+    <!-- Courbe + Donut -->
+    <div class="stats-grid">
+      <div class="stat-section">
+        <div class="section-title">Temps de travail</div>
+        <div id="chart-container"></div>
+      </div>
+      <div class="stat-section">
+        <div class="section-title">Répartition du travail</div>
+        <div class="donut-wrap" id="donut-container"></div>
+      </div>
+    </div>
+
+    <!-- Calendrier -->
+    <div class="stat-section full" style="margin-bottom:1.5rem">
+      <div class="section-title">Régularité</div>
+      <div id="calendrier-container"></div>
+    </div>
+
+    <!-- Top pièces -->
+    <div class="stat-section">
+      <div class="section-title">Pièces les plus travaillées</div>
+      <div class="top-list" id="top-container"></div>
+    </div>
+
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/supabase.js"></script>
+  <script>
+    let currentUser = null;
+    let periodeDays = 30;
+    let targetUserId = null;
+
+    const MOIS_COURTS = ["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"];
+    const COLORS = {
+      gammes:     "#8B2635",
+      exercice:   "#C4626D",
+      etude:      "#D4918A",
+      repertoire: "#E8C4B8",
+    };
+
+    // ─── Init ────────────────────────────────────────────────────────────────
+    (async () => {
+      currentUser = await requireAuth(["eleve", "prof"]);
+      if (!currentUser) return;
+
+      targetUserId = currentUser.id;
+
+      document.getElementById("nav-user").innerHTML = `
+        <strong>${currentUser.prenom} ${currentUser.nom}</strong>
+        <a href="index.html" style="color:var(--gris);font-size:0.85rem;text-decoration:underline;">Nouvelle séance</a>
+        ${currentUser.role === "prof" ? '<a href="admin.html" style="color:var(--bordeaux);font-size:0.85rem;text-decoration:none;">Admin</a>' : ""}
+        <button onclick="signOut()">Déconnexion</button>
+      `;
+
+      // Si prof : charger la liste des élèves
+      if (currentUser.role === "prof") {
+        const { data: eleves } = await db
+          .from("profiles")
+          .select("id, prenom, nom")
+          .eq("role", "eleve")
+          .eq("statut", "actif")
+          .order("nom");
+
+        if (eleves?.length) {
+          const sel = document.getElementById("filtre-eleve");
+          eleves.forEach(e => {
+            const opt = document.createElement("option");
+            opt.value = e.id;
+            opt.textContent = `${e.prenom} ${e.nom}`;
+            sel.appendChild(opt);
+          });
+          document.getElementById("eleve-selector").style.display = "flex";
+        }
+      }
+
+      await chargerStats();
+    })();
+
+    function setPeriode(jours, btn) {
+      periodeDays = jours;
+      document.querySelectorAll(".periode-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      chargerStats();
+    }
+
+    // ─── Chargement des données ───────────────────────────────────────────────
+    async function chargerStats() {
+      const sel = document.getElementById("filtre-eleve");
+      if (sel && sel.value !== "moi") {
+        targetUserId = sel.value;
+      } else {
+        targetUserId = currentUser.id;
+      }
+
+      const since = periodeDays < 9999
+        ? new Date(Date.now() - periodeDays * 24 * 60 * 60 * 1000).toISOString()
+        : new Date("2020-01-01").toISOString();
+
+      let query = db
+        .from("seances")
+        .select("date, duree_reelle, blocs")
+        .eq("user_id", targetUserId)
+        .gte("date", since)
+        .order("date", { ascending: true });
+
+      const { data: seances } = await query;
+
+      if (!seances?.length) {
+        afficherVide();
+        return;
+      }
+
+      const parsed = seances.map(s => ({
+        date:   new Date(s.date),
+        duree:  s.duree_reelle || 0,
+        blocs:  (() => { try { return JSON.parse(s.blocs) } catch { return [] } })(),
+      }));
+
+      calculerKPIs(parsed);
+      dessinerCourbe(parsed);
+      dessinerDonut(parsed);
+      dessinerCalendrier(parsed, since);
+      dessinerTopPieces(parsed);
+    }
+
+    // ─── KPIs ────────────────────────────────────────────────────────────────
+    function calculerKPIs(seances) {
+      const totalMin   = seances.reduce((s, x) => s + x.duree, 0);
+      const totalH     = (totalMin / 60).toFixed(1);
+      const nbSeances  = seances.length;
+      const moyMin     = nbSeances ? Math.round(totalMin / nbSeances) : 0;
+      const streak     = calculerStreak(seances);
+      const maxStreak  = calculerMaxStreak(seances);
+
+      document.getElementById("kpi-heures").textContent     = totalH + "h";
+      document.getElementById("kpi-heures-sub").textContent = totalMin + " minutes au total";
+      document.getElementById("kpi-seances").textContent    = nbSeances;
+      document.getElementById("kpi-seances-sub").textContent = `${(nbSeances / (periodeDays < 9999 ? periodeDays : 365) * 7).toFixed(1)} / semaine`;
+      document.getElementById("kpi-streak").textContent     = streak + "j";
+      document.getElementById("kpi-streak-sub").textContent = `Record : ${maxStreak} jours`;
+      document.getElementById("kpi-moy").textContent        = moyMin + "min";
+      document.getElementById("kpi-moy-sub").textContent    = moyMin >= 60
+        ? `${(moyMin/60).toFixed(1)}h par séance`
+        : `${moyMin} minutes par séance`;
+    }
+
+    function calculerStreak(seances) {
+      if (!seances.length) return 0;
+      const jours = new Set(seances.map(s => s.date.toDateString()));
+      let streak = 0;
+      let d = new Date();
+      while (true) {
+        if (jours.has(d.toDateString())) { streak++; }
+        else if (streak > 0) break;
+        d.setDate(d.getDate() - 1);
+        if (streak === 0 && !jours.has(d.toDateString())) break;
+      }
+      return streak;
+    }
+
+    function calculerMaxStreak(seances) {
+      if (!seances.length) return 0;
+      const jours = [...new Set(seances.map(s => s.date.toDateString()))]
+        .map(d => new Date(d))
+        .sort((a, b) => a - b);
+      let max = 1, cur = 1;
+      for (let i = 1; i < jours.length; i++) {
+        const diff = (jours[i] - jours[i-1]) / 86400000;
+        if (diff === 1) { cur++; max = Math.max(max, cur); }
+        else { cur = 1; }
+      }
+      return max;
+    }
+
+    // ─── Courbe ───────────────────────────────────────────────────────────────
+    function dessinerCourbe(seances) {
+      const container = document.getElementById("chart-container");
+
+      // Agréger par semaine
+      const semaines = {};
+      seances.forEach(s => {
+        const d   = new Date(s.date);
+        const lun = new Date(d);
+        lun.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+        const key = lun.toDateString();
+        semaines[key] = (semaines[key] || 0) + s.duree;
+      });
+
+      const keys   = Object.keys(semaines).sort((a, b) => new Date(a) - new Date(b));
+      const values = keys.map(k => semaines[k]);
+
+      if (keys.length < 2) {
+        container.innerHTML = `<div class="empty-stats">Pas encore assez de données pour la courbe</div>`;
+        return;
+      }
+
+      const max  = Math.max(...values);
+      const W    = 400;
+      const H    = 140;
+      const padL = 35;
+      const padB = 20;
+      const w    = W - padL;
+      const h    = H - padB;
+
+      const px = i => padL + (i / (keys.length - 1)) * w;
+      const py = v => h - (v / max) * (h - 10);
+
+      const pts = values.map((v, i) => `${px(i)},${py(v)}`).join(" ");
+      const area = `${padL},${h} ` + values.map((v, i) => `${px(i)},${py(v)}`).join(" ") + ` ${px(values.length-1)},${h}`;
+
+      // Étiquettes axe Y
+      const yLabels = [0, Math.round(max/2), max].map(v => {
+        const label = v >= 60 ? `${(v/60).toFixed(1)}h` : `${v}m`;
+        return `<text x="0" y="${py(v) + 3}" class="chart-label" text-anchor="start">${label}</text>`;
+      }).join("");
+
+      // Étiquettes axe X (toutes les 2 semaines)
+      const xLabels = keys.map((k, i) => {
+        if (i % 2 !== 0) return "";
+        const d = new Date(k);
+        return `<text x="${px(i)}" y="${H}" class="chart-label" text-anchor="middle">${d.getDate()} ${MOIS_COURTS[d.getMonth()]}</text>`;
+      }).join("");
+
+      const dots = values.map((v, i) =>
+        `<circle cx="${px(i)}" cy="${py(v)}" r="3" class="chart-dot"><title>${v >= 60 ? (v/60).toFixed(1)+"h" : v+"min"}</title></circle>`
+      ).join("");
+
+      container.innerHTML = `
+        <svg viewBox="0 0 ${W} ${H}" class="chart-svg">
+          <defs>
+            <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="var(--bordeaux)" stop-opacity="0.4"/>
+              <stop offset="100%" stop-color="var(--bordeaux)" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          ${yLabels}
+          <polyline points="${area}" class="chart-area"/>
+          <polyline points="${pts}" class="chart-line"/>
+          ${dots}
+          ${xLabels}
+        </svg>
+      `;
+    }
+
+    // ─── Donut ────────────────────────────────────────────────────────────────
+    function dessinerDonut(seances) {
+      const container = document.getElementById("donut-container");
+
+      const totaux = { gammes: 0, exercice: 0, etude: 0, repertoire: 0 };
+      seances.forEach(s => {
+        s.blocs.filter(b => totaux[b.type] !== undefined).forEach(b => {
+          totaux[b.type] += b.duree || 0;
+        });
+      });
+
+      const total = Object.values(totaux).reduce((a, b) => a + b, 0);
+      if (!total) {
+        container.innerHTML = `<div class="empty-stats">Aucune donnée de répartition</div>`;
+        return;
+      }
+
+      const r = 50; const cx = 65; const cy = 65;
+      let angle = -Math.PI / 2;
+      let paths = "";
+
+      const LABELS = { gammes: "Gammes", exercice: "Exercices", etude: "Études", repertoire: "Répertoire" };
+
+      Object.entries(totaux).forEach(([type, val]) => {
+        if (!val) return;
+        const frac  = val / total;
+        const sweep = frac * 2 * Math.PI;
+        const x1    = cx + r * Math.cos(angle);
+        const y1    = cy + r * Math.sin(angle);
+        angle      += sweep;
+        const x2    = cx + r * Math.cos(angle);
+        const y2    = cy + r * Math.sin(angle);
+        const large = sweep > Math.PI ? 1 : 0;
+        paths += `<path d="M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} Z" fill="${COLORS[type]}"/>`;
+      });
+
+      // Trou central
+      paths += `<circle cx="${cx}" cy="${cy}" r="28" fill="var(--blanc)"/>`;
+
+      const legend = Object.entries(totaux)
+        .filter(([, v]) => v > 0)
+        .map(([type, val]) => `
+          <div class="legend-row">
+            <div class="legend-dot" style="background:${COLORS[type]}"></div>
+            <span class="legend-label">${LABELS[type]}</span>
+            <span class="legend-pct">${Math.round(val / total * 100)}%</span>
+          </div>
+        `).join("");
+
+      container.innerHTML = `
+        <svg viewBox="0 0 130 130" class="donut-svg">${paths}</svg>
+        <div class="donut-legend">${legend}</div>
+      `;
+    }
+
+    // ─── Calendrier ───────────────────────────────────────────────────────────
+    function dessinerCalendrier(seances, since) {
+      const container = document.getElementById("calendrier-container");
+
+      // Map date → minutes
+      const joursMap = {};
+      seances.forEach(s => {
+        const key = s.date.toDateString();
+        joursMap[key] = (joursMap[key] || 0) + s.duree;
+      });
+
+      // Générer les 52 dernières semaines
+      const today   = new Date();
+      const debut   = new Date(today);
+      debut.setDate(debut.getDate() - 364);
+      // Reculer au lundi
+      debut.setDate(debut.getDate() - ((debut.getDay() + 6) % 7));
+
+      const semaines = [];
+      let cur = new Date(debut);
+      while (cur <= today) {
+        const semaine = [];
+        for (let j = 0; j < 7; j++) {
+          const d    = new Date(cur);
+          const key  = d.toDateString();
+          const min  = joursMap[key] || 0;
+          const lvl  = min === 0 ? 0 : min < 20 ? 1 : min < 45 ? 2 : min < 90 ? 3 : 4;
+          semaine.push({ date: d, min, lvl });
+          cur.setDate(cur.getDate() + 1);
+        }
+        semaines.push(semaine);
+      }
+
+      // Étiquettes mois
+      let moisLabels = "";
+      let lastMois   = -1;
+      semaines.forEach((sem, i) => {
+        const m = sem[0].date.getMonth();
+        if (m !== lastMois) {
+          moisLabels += `<span class="cal-month-label" style="width:${(semaines.filter((_, j) => {
+            const mm = semaines[j][0].date.getMonth(); return j === 0 || mm !== semaines[j-1][0].date.getMonth();
+          }).indexOf(i) >= 0 ? 1 : 0) * 16}px">${MOIS_COURTS[m]}</span>`;
+          lastMois = m;
+        }
+      });
+
+      const weeks = semaines.map(sem => `
+        <div class="cal-week">
+          ${sem.map(d => `
+            <div class="cal-day" data-min="${d.lvl}" title="${d.date.toLocaleDateString("fr-FR")}${d.min ? " · " + d.min + " min" : ""}"></div>
+          `).join("")}
+        </div>
+      `).join("");
+
+      // Légende
+      const legende = `
+        <div style="display:flex;align-items:center;gap:6px;margin-top:12px;font-size:0.7rem;color:var(--gris);">
+          <span>Moins</span>
+          ${[0,1,2,3,4].map(l => `<div class="cal-day" data-min="${l}" style="flex-shrink:0"></div>`).join("")}
+          <span>Plus</span>
+        </div>
+      `;
+
+      container.innerHTML = `<div class="cal-grid">${weeks}</div>${legende}`;
+    }
+
+    // ─── Top pièces ───────────────────────────────────────────────────────────
+    function dessinerTopPieces(seances) {
+      const container = document.getElementById("top-container");
+
+      const compteur = {};
+      seances.forEach(s => {
+        s.blocs
+          .filter(b => b.titre && b.type !== "pause" && b.type !== "sons-files")
+          .forEach(b => {
+            const key = b.titre;
+            compteur[key] = (compteur[key] || 0) + 1;
+          });
+      });
+
+      const top = Object.entries(compteur)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8);
+
+      if (!top.length) {
+        container.innerHTML = `<div class="empty-stats">Aucune donnée</div>`;
+        return;
+      }
+
+      const max = top[0][1];
+      container.innerHTML = top.map(([titre, count], i) => `
+        <div class="top-row">
+          <span class="top-rank">${i + 1}</span>
+          <span class="top-titre">${titre}</span>
+          <div class="top-bar-wrap">
+            <div class="top-bar" style="width:${(count / max * 100)}%"></div>
+          </div>
+          <span class="top-count">${count}×</span>
+        </div>
+      `).join("");
+    }
+
+    function afficherVide() {
+      ["kpi-heures","kpi-seances","kpi-streak","kpi-moy"].forEach(id => {
+        document.getElementById(id).textContent = "—";
+      });
+      ["kpi-heures-sub","kpi-seances-sub","kpi-streak-sub","kpi-moy-sub"].forEach(id => {
+        document.getElementById(id).textContent = "";
+      });
+      ["chart-container","donut-container","calendrier-container","top-container"].forEach(id => {
+        document.getElementById(id).innerHTML =
+          `<div class="empty-stats">Aucune séance enregistrée sur cette période</div>`;
+      });
+    }
+  </script>
+  <nav class="bottom-nav">
+    <a href="index.html" id="nav-seance">
+      <span class="nav-icon">♩</span>
+      <span>Séance</span>
+    </a>
+    <a href="stats.html" id="nav-stats">
+      <span class="nav-icon">◈</span>
+      <span>Stats</span>
+    </a>
+    <a href="historique.html" id="nav-historique">
+      <span class="nav-icon">◷</span>
+      <span>Historique</span>
+    </a>
+    <a href="admin.html" id="nav-admin" style="display:none">
+      <span class="nav-icon">⚙</span>
+      <span>Admin</span>
+    </a>
+  </nav>
+  <script>
+    (function() {
+      const page = location.pathname.split("/").pop() || "index.html";
+      const map  = {
+        "index.html":      "nav-seance",
+        "preview.html":    "nav-seance",
+        "stats.html":      "nav-stats",
+        "historique.html": "nav-historique",
+        "admin.html":      "nav-admin"
+      };
+      const activeId = map[page];
+      if (activeId) {
+        const el = document.getElementById(activeId);
+        if (el) el.classList.add("active");
+      }
+      document.addEventListener("DOMContentLoaded", async () => {
+        if (typeof getCurrentUser === "function") {
+          const u = await getCurrentUser();
+          if (u?.role === "prof") {
+            const a = document.getElementById("nav-admin");
+            if (a) a.style.display = "flex";
+          }
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

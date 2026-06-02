@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Séance</title>
+  <link rel="stylesheet" href="css/global.css" />
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #0E0D0B;
+      color: #F5F0E8;
+      overflow: hidden;
+      height: 100%;
+      width: 100%;
+      font-family: var(--font-body);
+      touch-action: none;
+    }
+
+    /* ── Zones de tap invisibles ──────────────────────────────────────────── */
+    #tap-left, #tap-right {
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      width: 20%;
+      z-index: 10;
+      cursor: pointer;
+    }
+    #tap-left  { left: 0; }
+    #tap-right { right: 0; }
+
+    /* Feedback visuel au tap */
+    .tap-feedback {
+      position: fixed;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 60px;
+      height: 60px;
+      background: rgba(245, 240, 232, 0.15);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 11;
+      transition: opacity 0.1s;
+    }
+    #tap-left  .tap-feedback { left: 10px; }
+    #tap-right .tap-feedback { right: 10px; }
+    .tap-feedback.flash { opacity: 1; }
+
+    /* ── Visionneuse PDF ──────────────────────────────────────────────────── */
+    #pdf-container {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      overflow: scroll;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+    }
+
+    #canvas-wrapper {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100%;
+      min-width: 100%;
+      padding: 0;
+    }
+
+    #canvas-wrapper canvas {
+      display: block;
+      max-width: none;
+    }
+
+    /* ── Timer ────────────────────────────────────────────────────────────── */
+    #timer-widget {
+      position: fixed;
+      top: env(safe-area-inset-top, 20px);
+      left: 20px;
+      z-index: 30;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      background: rgba(14, 13, 11, 0.85);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(245, 240, 232, 0.1);
+      border-radius: 12px;
+      padding: 12px 18px;
+    }
+
+    #timer-label {
+      font-size: 0.65rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: rgba(245, 240, 232, 0.4);
+      font-family: var(--font-mono);
+    }
+
+    #timer-display {
+      font-family: var(--font-mono);
+      font-size: 2rem;
+      font-weight: 500;
+      color: #F5F0E8;
+      line-height: 1;
+    }
+
+    #timer-display.urgent {
+      color: #E05C6A;
+      animation: pulse 1s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.6; }
+    }
+
+    #bloc-name {
+      font-size: 0.75rem;
+      color: rgba(245, 240, 232, 0.5);
+      font-family: var(--font-body);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 200px;
+    }
+
+    /* ── Contrôles haut droite ────────────────────────────────────────────── */
+    #ctrl-bar {
+      position: fixed;
+      top: env(safe-area-inset-top, 20px);
+      right: 20px;
+      z-index: 30;
+      display: flex;
+      gap: 8px;
+    }
+
+    .ctrl-btn {
+      background: rgba(14, 13, 11, 0.85);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(245, 240, 232, 0.12);
+      color: rgba(245, 240, 232, 0.8);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      font-family: var(--font-body);
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .ctrl-btn:hover, .ctrl-btn:active {
+      background: rgba(245, 240, 232, 0.15);
+      color: #F5F0E8;
+    }
+
+    /* ── Barre navigation PDF ─────────────────────────────────────────────── */
+    #nav-bar {
+      position: fixed;
+      bottom: env(safe-area-inset-bottom, 20px);
+      right: 20px;
+      z-index: 30;
+      display: flex;
+      gap: 8px;
+    }
+
+    .nav-btn {
+      background: rgba(14, 13, 11, 0.85);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(245, 240, 232, 0.12);
+      color: rgba(245, 240, 232, 0.8);
+      border-radius: 10px;
+      width: 48px;
+      height: 48px;
+      font-size: 1.2rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+
+    .nav-btn:hover, .nav-btn:active {
+      background: rgba(245, 240, 232, 0.15);
+    }
+
+    /* ── Indicateur de page ───────────────────────────────────────────────── */
+    #page-indicator {
+      position: fixed;
+      bottom: env(safe-area-inset-bottom, 20px);
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 30;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: rgba(245, 240, 232, 0.35);
+      background: rgba(14, 13, 11, 0.6);
+      padding: 6px 12px;
+      border-radius: 100px;
+    }
+
+    /* ── Écran pause ──────────────────────────────────────────────────────── */
+    #pause-screen {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 5;
+      background: #0E0D0B;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 2rem;
+      text-align: center;
+      padding: 2rem;
+    }
+
+    #pause-screen.visible { display: flex; }
+
+    .pause-timer {
+      font-family: var(--font-mono);
+      font-size: 4rem;
+      font-weight: 500;
+      color: rgba(245, 240, 232, 0.6);
+    }
+
+    .pause-message {
+      font-family: var(--font-titre);
+      font-size: 1.4rem;
+      font-style: italic;
+      color: rgba(245, 240, 232, 0.8);
+      max-width: 480px;
+      line-height: 1.5;
+      transition: opacity 0.5s;
+    }
+
+    .pause-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      color: rgba(245, 240, 232, 0.25);
+      font-family: var(--font-mono);
+    }
+
+    .pause-skip {
+      background: transparent;
+      border: 1px solid rgba(245, 240, 232, 0.2);
+      color: rgba(245, 240, 232, 0.4);
+      border-radius: 100px;
+      padding: 0.5rem 1.25rem;
+      font-family: var(--font-body);
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .pause-skip:hover { color: rgba(245, 240, 232, 0.8); border-color: rgba(245, 240, 232, 0.4); }
+
+    /* ── Écran sons filés ─────────────────────────────────────────────────── */
+    #sonsfiles-screen {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 5;
+      background: #0E0D0B;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    #sonsfiles-screen.visible { display: flex; }
+
+    .sf-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      color: rgba(245, 240, 232, 0.25);
+      font-family: var(--font-mono);
+    }
+
+    .sf-titre {
+      font-family: var(--font-titre);
+      font-size: 1.8rem;
+      font-style: italic;
+      color: rgba(245, 240, 232, 0.7);
+    }
+
+    .sf-timer {
+      font-family: var(--font-mono);
+      font-size: 6rem;
+      font-weight: 500;
+      color: #F5F0E8;
+      letter-spacing: -0.02em;
+    }
+
+    /* ── Écran de fin ─────────────────────────────────────────────────────── */
+    #end-screen {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      background: #0E0D0B;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 2rem;
+      padding: 2rem;
+      text-align: center;
+    }
+
+    #end-screen.visible { display: flex; }
+
+    .end-titre {
+      font-family: var(--font-titre);
+      font-size: 2rem;
+      font-style: italic;
+      color: #F5F0E8;
+    }
+
+    .end-summary {
+      background: rgba(245, 240, 232, 0.05);
+      border: 1px solid rgba(245, 240, 232, 0.1);
+      border-radius: 12px;
+      padding: 1.5rem 2rem;
+      text-align: left;
+      min-width: 280px;
+    }
+
+    .end-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid rgba(245, 240, 232, 0.06);
+      font-size: 0.875rem;
+      color: rgba(245, 240, 232, 0.7);
+    }
+
+    .end-row:last-child { border-bottom: none; }
+    .end-row strong { color: #F5F0E8; font-weight: 500; }
+
+    .end-note textarea {
+      width: 100%;
+      min-width: 280px;
+      background: rgba(245, 240, 232, 0.05);
+      border: 1px solid rgba(245, 240, 232, 0.15);
+      border-radius: 8px;
+      color: #F5F0E8;
+      font-family: var(--font-body);
+      font-size: 0.875rem;
+      padding: 0.75rem 1rem;
+      resize: none;
+      outline: none;
+      height: 80px;
+    }
+
+    .end-note textarea::placeholder { color: rgba(245, 240, 232, 0.25); }
+
+    .end-actions { display: flex; gap: 1rem; }
+
+    .end-btn {
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      font-family: var(--font-body);
+      font-size: 0.875rem;
+      cursor: pointer;
+      border: none;
+      transition: background 0.2s;
+    }
+
+    .end-btn-primary {
+      background: #F5F0E8;
+      color: #0E0D0B;
+      font-weight: 500;
+    }
+
+    .end-btn-primary:hover { background: #EDE7D9; }
+
+    .end-btn-ghost {
+      background: rgba(245, 240, 232, 0.08);
+      color: rgba(245, 240, 232, 0.6);
+      border: 1px solid rgba(245, 240, 232, 0.15);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Zones de tap pour tourner les pages -->
+  <div id="tap-left"  onclick="tapPage(-1)"><div class="tap-feedback" id="fb-left">‹</div></div>
+  <div id="tap-right" onclick="tapPage(+1)"><div class="tap-feedback" id="fb-right">›</div></div>
+
+  <!-- Timer -->
+  <div id="timer-widget">
+    <div id="timer-label">Temps restant</div>
+    <div id="timer-display">--:--</div>
+    <div id="bloc-name"></div>
+  </div>
+
+  <!-- Contrôles -->
+  <div id="ctrl-bar">
+    <button class="ctrl-btn" onclick="prevSegment()">← Bloc préc.</button>
+    <button class="ctrl-btn" onclick="nextSegment()">Bloc suiv. →</button>
+    <button class="ctrl-btn" onclick="demanderFin()">Terminer</button>
+  </div>
+
+  <!-- Visionneuse PDF -->
+  <div id="pdf-container">
+    <div id="canvas-wrapper"></div>
+  </div>
+
+  <!-- Indicateur de page -->
+  <div id="page-indicator" style="display:none">1 / 1</div>
+
+  <!-- Navigation pages -->
+  <div id="nav-bar" style="display:none">
+    <button class="nav-btn" onclick="changerPage(-1)">‹</button>
+    <button class="nav-btn" onclick="zoomOut()">−</button>
+    <button class="nav-btn" onclick="zoomIn()">+</button>
+    <button class="nav-btn" onclick="changerPage(+1)">›</button>
+  </div>
+
+  <!-- Écran pause -->
+  <div id="pause-screen">
+    <div class="pause-label">Pause</div>
+    <div class="pause-timer" id="pause-timer">2:00</div>
+    <div class="pause-message" id="pause-message"></div>
+    <button class="pause-skip" onclick="nextSegment()">Passer la pause</button>
+  </div>
+
+  <!-- Écran sons filés -->
+  <div id="sonsfiles-screen">
+    <div class="sf-label">Échauffement</div>
+    <div class="sf-titre">Sons filés</div>
+    <div class="sf-timer" id="sf-timer">10:00</div>
+  </div>
+
+  <!-- Écran de fin -->
+  <div id="end-screen">
+    <div class="end-titre">Séance terminée</div>
+    <div class="end-summary" id="end-summary"></div>
+    <div class="end-note">
+      <textarea id="note-seance" placeholder="Une note sur cette séance… (facultatif)"></textarea>
+    </div>
+    <div class="end-actions">
+      <button class="end-btn end-btn-ghost" onclick="window.location.href='index.html'">
+        Sans sauvegarder
+      </button>
+      <button class="end-btn end-btn-primary" onclick="sauvegarderEtQuitter()">
+        Sauvegarder
+      </button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+  </script>
+  <script src="js/supabase.js"></script>
+  <script src="js/session.js"></script>
+  <script>
+    // ─── État global ─────────────────────────────────────────────────────────
+    let blocs        = [];
+    let options      = {};
+    let currentIndex = 0;
+    let pdfDoc       = null;
+    let pageNum      = 1;
+    let scale        = 1.0;
+    let timerInterval;
+    let debutSeance  = Date.now();
+    let currentUser  = null;
+
+    const MESSAGES_PAUSE = [
+      "Pense à relâcher les épaules.",
+      "Souffle. Respire avec ton geste.",
+      "Moins de pression, plus d'élan.",
+      "La précision vient avec la lenteur.",
+      "Un bon trille est un trille détendu.",
+      "Ne serre pas l'archet avec le pouce.",
+      "Joue pour écouter, pas pour produire.",
+      "Le vibrato n'est pas un sauvetage.",
+      "Écoute le son s'éteindre.",
+      "Ralentis, puis ralentis encore.",
+    ];
+
+    // ─── Init ────────────────────────────────────────────────────────────────
+    (async () => {
+      currentUser = await requireAuth(["eleve", "prof"]);
+      if (!currentUser) return;
+
+      const local = chargerSessionLocale();
+      if (!local.blocs) { window.location.href = "index.html"; return; }
+
+      blocs   = local.blocs;
+      options = local.options || {};
+
+      debutSeance = Date.now();
+      chargerBloc(0);
+    })();
+
+    // ─── Chargement d'un bloc ────────────────────────────────────────────────
+    function chargerBloc(index) {
+      if (index >= blocs.length) { afficherFin(); return; }
+      currentIndex = index;
+
+      const bloc = blocs[index];
+      const type = bloc.type;
+
+      // Cacher tous les écrans spéciaux
+      document.getElementById("pause-screen").classList.remove("visible");
+      document.getElementById("sonsfiles-screen").classList.remove("visible");
+      document.getElementById("pdf-container").style.display = "";
+      document.getElementById("nav-bar").style.display = "none";
+      document.getElementById("page-indicator").style.display = "none";
+      document.getElementById("tap-left").style.display = "";
+      document.getElementById("tap-right").style.display = "";
+      clearInterval(timerInterval);
+
+      if (type === "pause") {
+        afficherPause(bloc.duree || 2);
+        return;
+      }
+
+      if (type === "sons-files") {
+        afficherSonsFiles();
+        return;
+      }
+
+      // Bloc de travail avec PDF
+      afficherBlocTravail(bloc);
+    }
+
+    // ─── Bloc de travail ─────────────────────────────────────────────────────
+    function afficherBlocTravail(bloc) {
+      document.getElementById("bloc-name").textContent = bloc.titre || bloc.type;
+      document.getElementById("nav-bar").style.display = "flex";
+      document.getElementById("pdf-container").style.display = "";
+
+      if (bloc.pdf_url) {
+        chargerPDF(bloc.pdf_url);
+      } else {
+        document.getElementById("canvas-wrapper").innerHTML = `
+          <div style="color:rgba(245,240,232,0.3); font-family:var(--font-titre); font-style:italic; font-size:1.5rem; text-align:center; padding:4rem 2rem;">
+            ${bloc.titre || ""}
+            <div style="font-size:0.9rem; margin-top:1rem; opacity:0.5">Pas de partition associée</div>
+          </div>
+        `;
+      }
+
+      lancerTimer((bloc.duree || 10) * 60, () => {
+        currentIndex++;
+        chargerBloc(currentIndex);
+      });
+    }
+
+    async function chargerPDF(url) {
+      document.getElementById("canvas-wrapper").innerHTML =
+        `<div style="color:rgba(245,240,232,0.2); font-size:0.875rem;">Chargement…</div>`;
+
+      try {
+        pdfDoc  = await pdfjsLib.getDocument(url).promise;
+        pageNum = 1;
+        scale   = calculerScaleInitial(await pdfDoc.getPage(1));
+        renderiserPage(pageNum);
+        mettreAjourIndicateur();
+        document.getElementById("nav-bar").style.display = "flex";
+        document.getElementById("page-indicator").style.display = "block";
+      } catch (err) {
+        document.getElementById("canvas-wrapper").innerHTML =
+          `<div style="color:rgba(245,240,232,0.3); font-family:var(--font-titre); font-style:italic; padding:4rem 2rem; text-align:center;">
+            Partition non disponible
+          </div>`;
+      }
+    }
+
+    function calculerScaleInitial(page) {
+      const viewport = page.getViewport({ scale: 1 });
+      const scaleW   = window.innerWidth  / viewport.width;
+      const scaleH   = window.innerHeight / viewport.height;
+      return Math.min(scaleW, scaleH) * 0.95;
+    }
+
+    function renderiserPage(num) {
+      if (!pdfDoc) return;
+      pdfDoc.getPage(num).then(page => {
+        const viewport = page.getViewport({ scale });
+        const canvas   = document.createElement("canvas");
+        const ctx      = canvas.getContext("2d");
+        canvas.width   = viewport.width;
+        canvas.height  = viewport.height;
+
+        const wrapper = document.getElementById("canvas-wrapper");
+        wrapper.innerHTML = "";
+        wrapper.appendChild(canvas);
+
+        page.render({ canvasContext: ctx, viewport });
+        mettreAjourIndicateur();
+      });
+    }
+
+    function mettreAjourIndicateur() {
+      if (!pdfDoc) return;
+      document.getElementById("page-indicator").textContent =
+        `${pageNum} / ${pdfDoc.numPages}`;
+    }
+
+    // ─── Navigation pages ────────────────────────────────────────────────────
+    function changerPage(delta) {
+      if (!pdfDoc) return;
+      const next = pageNum + delta;
+      if (next >= 1 && next <= pdfDoc.numPages) {
+        pageNum = next;
+        renderiserPage(pageNum);
+      }
+    }
+
+    // Tap zones gauche/droite
+    function tapPage(delta) {
+      changerPage(delta);
+      const feedbackId = delta < 0 ? "fb-left" : "fb-right";
+      const el = document.getElementById(feedbackId);
+      el.classList.add("flash");
+      setTimeout(() => el.classList.remove("flash"), 200);
+    }
+
+    function zoomIn()  { scale = Math.min(4, scale + 0.25); renderiserPage(pageNum); }
+    function zoomOut() { scale = Math.max(0.3, scale - 0.25); renderiserPage(pageNum); }
+
+    // ─── Swipe horizontal (complément du tap) ───────────────────────────────
+    let touchStartX = 0;
+    let touchStartY = 0;
+
+    document.addEventListener("touchstart", e => {
+      touchStartX = e.changedTouches[0].screenX;
+      touchStartY = e.changedTouches[0].screenY;
+    }, { passive: true });
+
+    document.addEventListener("touchend", e => {
+      const deltaX = e.changedTouches[0].screenX - touchStartX;
+      const deltaY = e.changedTouches[0].screenY - touchStartY;
+      // Swipe horizontal uniquement (pas de scroll vertical)
+      if (Math.abs(deltaX) > 60 && Math.abs(deltaX) > Math.abs(deltaY) * 2) {
+        changerPage(deltaX > 0 ? -1 : 1);
+      }
+    }, { passive: true });
+
+    // ─── Pinch zoom ──────────────────────────────────────────────────────────
+    let pinchDist0 = null;
+    let scale0     = null;
+
+    document.getElementById("pdf-container").addEventListener("touchmove", e => {
+      if (e.touches.length !== 2) return;
+      const dx   = e.touches[0].clientX - e.touches[1].clientX;
+      const dy   = e.touches[0].clientY - e.touches[1].clientY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (pinchDist0 === null) { pinchDist0 = dist; scale0 = scale; return; }
+      scale = Math.min(4, Math.max(0.3, scale0 * (dist / pinchDist0)));
+      renderiserPage(pageNum);
+    }, { passive: true });
+
+    document.getElementById("pdf-container").addEventListener("touchend", () => {
+      pinchDist0 = null;
+      scale0     = null;
+    });
+
+    // ─── Timer ───────────────────────────────────────────────────────────────
+    function lancerTimer(secondes, callback) {
+      clearInterval(timerInterval);
+      let restant = secondes;
+      const display = document.getElementById("timer-display");
+      display.textContent = formatTime(restant);
+      display.classList.remove("urgent");
+
+      timerInterval = setInterval(() => {
+        restant--;
+        display.textContent = formatTime(restant);
+        display.classList.toggle("urgent", restant <= 60);
+        if (restant <= 0) {
+          clearInterval(timerInterval);
+          callback();
+        }
+      }, 1000);
+    }
+
+    // ─── Pause ───────────────────────────────────────────────────────────────
+    function afficherPause(dureeMin) {
+      document.getElementById("pdf-container").style.display = "none";
+      document.getElementById("tap-left").style.display  = "none";
+      document.getElementById("tap-right").style.display = "none";
+      document.getElementById("nav-bar").style.display   = "none";
+      document.getElementById("page-indicator").style.display = "none";
+      document.getElementById("timer-widget").style.display = "none";
+      document.getElementById("pause-screen").classList.add("visible");
+
+      const msgEl = document.getElementById("pause-message");
+      const rotateMsg = () => {
+        msgEl.style.opacity = 0;
+        setTimeout(() => {
+          msgEl.textContent = MESSAGES_PAUSE[Math.floor(Math.random() * MESSAGES_PAUSE.length)];
+          msgEl.style.opacity = 1;
+        }, 500);
+      };
+      rotateMsg();
+      const msgInterval = setInterval(rotateMsg, 12000);
+
+      let restant = dureeMin * 60;
+      const pauseTimerEl = document.getElementById("pause-timer");
+      pauseTimerEl.textContent = formatTime(restant);
+
+      timerInterval = setInterval(() => {
+        restant--;
+        pauseTimerEl.textContent = formatTime(restant);
+        if (restant <= 0) {
+          clearInterval(timerInterval);
+          clearInterval(msgInterval);
+          document.getElementById("timer-widget").style.display = "";
+          currentIndex++;
+          chargerBloc(currentIndex);
+        }
+      }, 1000);
+    }
+
+    // ─── Sons filés ──────────────────────────────────────────────────────────
+    function afficherSonsFiles() {
+      document.getElementById("pdf-container").style.display = "none";
+      document.getElementById("tap-left").style.display  = "none";
+      document.getElementById("tap-right").style.display = "none";
+      document.getElementById("nav-bar").style.display   = "none";
+      document.getElementById("page-indicator").style.display = "none";
+      document.getElementById("sonsfiles-screen").classList.add("visible");
+      document.getElementById("timer-widget").style.display = "none";
+
+      let restant = 10 * 60;
+      const sfEl = document.getElementById("sf-timer");
+      sfEl.textContent = formatTime(restant);
+
+      timerInterval = setInterval(() => {
+        restant--;
+        sfEl.textContent = formatTime(restant);
+        if (restant <= 0) {
+          clearInterval(timerInterval);
+          document.getElementById("timer-widget").style.display = "";
+          currentIndex++;
+          chargerBloc(currentIndex);
+        }
+      }, 1000);
+    }
+
+    // ─── Navigation segments ─────────────────────────────────────────────────
+    function nextSegment() {
+      clearInterval(timerInterval);
+      document.getElementById("pause-screen").classList.remove("visible");
+      document.getElementById("sonsfiles-screen").classList.remove("visible");
+      document.getElementById("timer-widget").style.display = "";
+      currentIndex++;
+      chargerBloc(currentIndex);
+    }
+
+    function prevSegment() {
+      clearInterval(timerInterval);
+      document.getElementById("pause-screen").classList.remove("visible");
+      document.getElementById("sonsfiles-screen").classList.remove("visible");
+      document.getElementById("timer-widget").style.display = "";
+      if (currentIndex > 0) currentIndex--;
+      chargerBloc(currentIndex);
+    }
+
+    // ─── Fin de séance ───────────────────────────────────────────────────────
+    function demanderFin() {
+      clearInterval(timerInterval);
+      afficherFin();
+    }
+
+    function afficherFin() {
+      const dureeReelle = Math.round((Date.now() - debutSeance) / 60000);
+      const blocsJoues  = blocs.filter(b => b.type !== "pause" && b.type !== "sons-files");
+
+      let rows = `
+        <div class="end-row">
+          <span>Durée réelle</span>
+          <strong>${dureeReelle} min</strong>
+        </div>
+      `;
+      blocsJoues.forEach(b => {
+        rows += `
+          <div class="end-row">
+            <span>${b.type}</span>
+            <strong>${b.titre || "—"}</strong>
+          </div>
+        `;
+      });
+
+      document.getElementById("end-summary").innerHTML = rows;
+      document.getElementById("end-screen").classList.add("visible");
+
+      // Stocker pour la sauvegarde
+      document.getElementById("end-screen").dataset.duree = dureeReelle;
+    }
+
+    async function sauvegarderEtQuitter() {
+      if (!currentUser) { window.location.href = "index.html"; return; }
+      const dureeReelle = parseInt(document.getElementById("end-screen").dataset.duree || "0");
+      const note        = document.getElementById("note-seance").value.trim();
+      await sauvegarderSession(currentUser.id, blocs, dureeReelle, note);
+      window.location.href = "index.html";
+    }
+  </script>
+</body>
+</html>

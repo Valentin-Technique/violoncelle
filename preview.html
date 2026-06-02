@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aperçu de la séance</title>
+  <link rel="stylesheet" href="css/global.css" />
+  <style>
+    /* Défilement horizontal des blocs */
+    .session-track {
+      display: flex;
+      gap: 1.25rem;
+      overflow-x: auto;
+      padding-bottom: 1.5rem;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .session-track::-webkit-scrollbar { height: 4px; }
+    .session-track::-webkit-scrollbar-track { background: var(--creme-dark); border-radius: 100px; }
+    .session-track::-webkit-scrollbar-thumb { background: var(--gris-light); border-radius: 100px; }
+
+    /* Carte de bloc */
+    .bloc-card {
+      flex: 0 0 300px;
+      scroll-snap-align: start;
+      background: var(--blanc);
+      border: 1px solid var(--gris-light);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      position: relative;
+      transition: box-shadow 0.2s;
+    }
+
+    .bloc-card:hover { box-shadow: var(--shadow-lg); }
+
+    /* Bloc pause */
+    .bloc-card.pause {
+      flex: 0 0 140px;
+      background: var(--creme-dark);
+      border-style: dashed;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      color: var(--gris);
+    }
+
+    .bloc-card.pause .pause-icon {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .bloc-card.pause .pause-label {
+      font-size: 0.8rem;
+      font-family: var(--font-mono);
+    }
+
+    /* Bloc sons filés */
+    .bloc-card.sons-files {
+      flex: 0 0 200px;
+      background: linear-gradient(135deg, var(--encre) 0%, var(--encre-soft) 100%);
+      border: none;
+      color: var(--creme);
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .bloc-card.sons-files .sf-titre {
+      font-family: var(--font-titre);
+      font-style: italic;
+      font-size: 1.1rem;
+      color: var(--creme);
+    }
+
+    .bloc-card.sons-files .sf-duree {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--gris-light);
+      margin-top: 0.5rem;
+    }
+
+    /* En-tête de carte */
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+
+    .card-type {
+      font-size: 0.7rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--gris);
+    }
+
+    .card-duree {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--bordeaux);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    /* Miniature PDF */
+    .pdf-preview {
+      width: 100%;
+      aspect-ratio: 3/4;
+      background: var(--creme-dark);
+      border-radius: var(--radius);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .pdf-preview canvas {
+      width: 100% !important;
+      height: auto !important;
+    }
+
+    .pdf-preview .pdf-placeholder {
+      font-size: 2rem;
+      color: var(--gris-light);
+    }
+
+    /* Infos texte */
+    .card-titre {
+      font-family: var(--font-titre);
+      font-size: 1.1rem;
+      font-weight: 600;
+      line-height: 1.2;
+    }
+
+    .card-meta {
+      font-size: 0.8rem;
+      color: var(--gris);
+      line-height: 1.6;
+    }
+
+    .badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.3rem;
+    }
+
+    /* Contrôles de durée */
+    .duree-control {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .duree-control button {
+      width: 28px;
+      height: 28px;
+      border: 1px solid var(--gris-light);
+      background: var(--blanc);
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s;
+      color: var(--encre);
+      flex-shrink: 0;
+    }
+
+    .duree-control button:hover { background: var(--creme-dark); }
+
+    .duree-control .duree-val {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      min-width: 50px;
+      text-align: center;
+    }
+
+    /* Bouton remplacer */
+    .btn-replace {
+      width: 100%;
+      justify-content: center;
+      font-size: 0.8rem;
+      padding: 0.5rem 0.75rem;
+      background: transparent;
+      color: var(--encre-soft);
+      border: 1px solid var(--gris-light);
+    }
+
+    .btn-replace:hover { background: var(--creme-dark); }
+
+    .btn-replace.loading { opacity: 0.6; pointer-events: none; }
+
+    /* Résumé durée */
+    .duree-summary {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem 1.25rem;
+      background: var(--blanc);
+      border: 1px solid var(--gris-light);
+      border-radius: var(--radius);
+      margin-bottom: 2rem;
+      font-size: 0.875rem;
+    }
+
+    .duree-summary .total {
+      font-family: var(--font-mono);
+      font-size: 1.1rem;
+      font-weight: 500;
+      color: var(--bordeaux);
+    }
+
+    .duree-summary .label { color: var(--gris); }
+
+    .duree-bar {
+      flex: 1;
+      height: 6px;
+      background: var(--creme-dark);
+      border-radius: 100px;
+      overflow: hidden;
+    }
+
+    .duree-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--bordeaux), var(--bordeaux-light));
+      border-radius: 100px;
+      transition: width 0.3s;
+    }
+
+    /* Actions bas de page */
+    .actions {
+      display: flex;
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+
+    @media (max-width: 600px) {
+      .bloc-card { flex: 0 0 260px; }
+      .actions { flex-direction: column; }
+    }
+  </style>
+</head>
+<body class="has-bottom-nav">
+  <div class="page">
+    <header class="page-header">
+      <div class="page-header-left">
+        <div class="page-subtitle">Aperçu</div>
+        <h1>Votre séance</h1>
+      </div>
+      <div class="nav-user" id="nav-user"></div>
+    </header>
+
+    <!-- Résumé durée -->
+    <div class="duree-summary">
+      <span class="label">Durée totale</span>
+      <div class="duree-bar">
+        <div class="duree-bar-fill" id="duree-fill" style="width:0%"></div>
+      </div>
+      <span class="total" id="duree-total">— min</span>
+    </div>
+
+    <!-- Blocs -->
+    <div class="session-track" id="session-track"></div>
+
+    <!-- Actions -->
+    <div class="actions">
+      <button class="btn btn-ghost" onclick="window.location.href='index.html'">
+        ← Modifier les critères
+      </button>
+      <button class="btn btn-accent" onclick="demarrer()" style="flex:1; justify-content:center;">
+        Démarrer la séance →
+      </button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+  </script>
+  <script src="js/supabase.js"></script>
+  <script src="js/session.js"></script>
+  <script>
+    let currentUser = null;
+    let repertoire  = [];
+    let blocs       = [];
+    let options     = {};
+    const DUREE_CIBLE = 60; // fallback
+
+    // ─── Init ────────────────────────────────────────────────────────────────
+    (async () => {
+      currentUser = await requireAuth(["eleve", "prof"]);
+      if (!currentUser) return;
+
+      document.getElementById("nav-user").innerHTML = `
+        <strong>${currentUser.prenom} ${currentUser.nom}</strong>
+        <button onclick="signOut()">Déconnexion</button>
+      `;
+
+      const local = chargerSessionLocale();
+      if (!local.blocs || !local.options) {
+        window.location.href = "index.html";
+        return;
+      }
+
+      blocs   = local.blocs;
+      options = local.options;
+
+      // Charger la bibliothèque (pour le remplacement)
+      const { data } = await db.from("repertoire").select("*");
+      repertoire = data || [];
+
+      afficherBlocs();
+      mettreAjourDuree();
+    })();
+
+    // ─── Affichage ───────────────────────────────────────────────────────────
+    function afficherBlocs() {
+      const track = document.getElementById("session-track");
+      track.innerHTML = "";
+
+      blocs.forEach((bloc, index) => {
+        const card = creerCarte(bloc, index);
+        track.appendChild(card);
+      });
+    }
+
+    function creerCarte(bloc, index) {
+      const div = document.createElement("div");
+
+      if (bloc.type === "pause") {
+        div.className = "bloc-card pause";
+        div.innerHTML = `
+          <div class="pause-icon">◦ ◦ ◦</div>
+          <div class="pause-label">Pause · 2 min</div>
+        `;
+        return div;
+      }
+
+      if (bloc.type === "sons-files") {
+        div.className = "bloc-card sons-files";
+        div.innerHTML = `
+          <div class="sf-titre">Sons filés</div>
+          <div class="sf-duree">10 min</div>
+        `;
+        return div;
+      }
+
+      div.className = "bloc-card";
+
+      const objectifsBadges = (bloc.objectifs || "")
+        .split(",").map(o => o.trim()).filter(Boolean)
+        .map(o => `<span class="badge">${o}</span>`).join("");
+
+      div.innerHTML = `
+        <div class="card-header">
+          <span class="card-type">${bloc.type}</span>
+          <span class="card-duree" id="duree-label-${index}">${bloc.duree} min</span>
+        </div>
+
+        ${bloc.pdf_url ? `
+          <div class="pdf-preview" id="pdf-${index}">
+            <div class="pdf-placeholder">♩</div>
+          </div>
+        ` : `
+          <div class="pdf-preview">
+            <div class="pdf-placeholder">♩</div>
+          </div>
+        `}
+
+        <div>
+          <div class="card-titre">${bloc.titre || "Sans titre"}</div>
+          <div class="card-meta">
+            ${bloc.auteur  ? bloc.auteur + "<br>" : ""}
+            ${bloc.recueil ? bloc.recueil + "<br>" : ""}
+          </div>
+        </div>
+
+        ${objectifsBadges ? `<div class="badges">${objectifsBadges}</div>` : ""}
+
+        <div class="duree-control">
+          <button onclick="modifierDuree(${index}, -5)">−</button>
+          <span class="duree-val" id="duree-ctrl-${index}">${bloc.duree} min</span>
+          <button onclick="modifierDuree(${index}, +5)">+</button>
+        </div>
+
+        <button class="btn btn-replace" id="replace-btn-${index}" onclick="remplacer(${index})">
+          ↻ Changer ce bloc
+        </button>
+      `;
+
+      // Charger la miniature PDF
+      if (bloc.pdf_url) {
+        setTimeout(() => chargerMiniature(bloc.pdf_url, index), 0);
+      }
+
+      return div;
+    }
+
+    async function chargerMiniature(url, index) {
+      try {
+        const pdf  = await pdfjsLib.getDocument(url).promise;
+        const page = await pdf.getPage(1);
+        const container = document.getElementById(`pdf-${index}`);
+        if (!container) return;
+
+        const viewport = page.getViewport({ scale: 0.6 });
+        const canvas   = document.createElement("canvas");
+        canvas.width   = viewport.width;
+        canvas.height  = viewport.height;
+        page.render({ canvasContext: canvas.getContext("2d"), viewport });
+        container.innerHTML = "";
+        container.appendChild(canvas);
+      } catch {
+        // PDF inaccessible — on garde le placeholder
+      }
+    }
+
+    // ─── Modifier la durée d'un bloc ─────────────────────────────────────────
+    function modifierDuree(index, delta) {
+      const bloc = blocs[index];
+      if (!bloc || bloc.type === "pause") return;
+      bloc.duree = Math.max(5, (bloc.duree || 10) + delta);
+      document.getElementById(`duree-ctrl-${index}`).textContent = `${bloc.duree} min`;
+      document.getElementById(`duree-label-${index}`).textContent = `${bloc.duree} min`;
+      mettreAjourDuree();
+      sauvegarderSessionLocale(blocs, options);
+    }
+
+    // ─── Remplacer un bloc ────────────────────────────────────────────────────
+    async function remplacer(index) {
+      const btn = document.getElementById(`replace-btn-${index}`);
+      btn.classList.add("loading");
+      btn.textContent = "Recherche…";
+
+      const newBlocs = remplacerBloc(blocs, index, repertoire, options);
+
+      if (newBlocs === blocs) {
+        btn.classList.remove("loading");
+        btn.textContent = "Aucune alternative disponible";
+        setTimeout(() => { btn.textContent = "↻ Changer ce bloc"; }, 2000);
+        return;
+      }
+
+      blocs = newBlocs;
+      sauvegarderSessionLocale(blocs, options);
+      afficherBlocs();
+      mettreAjourDuree();
+    }
+
+    // ─── Barre de durée ──────────────────────────────────────────────────────
+    function mettreAjourDuree() {
+      const total = blocs
+        .filter(b => b.type !== "pause")
+        .reduce((s, b) => s + (b.duree || 0), 0);
+
+      const cible = options.duree || DUREE_CIBLE;
+      const pct   = Math.min(100, Math.round((total / cible) * 100));
+
+      document.getElementById("duree-total").textContent = `${total} min`;
+      document.getElementById("duree-fill").style.width  = `${pct}%`;
+    }
+
+    // ─── Démarrer ────────────────────────────────────────────────────────────
+    function demarrer() {
+      sauvegarderSessionLocale(blocs, options);
+      window.location.href = "lecture.html";
+    }
+  </script>
+  <nav class="bottom-nav">
+    <a href="index.html" id="nav-seance">
+      <span class="nav-icon">♩</span>
+      <span>Séance</span>
+    </a>
+    <a href="stats.html" id="nav-stats">
+      <span class="nav-icon">◈</span>
+      <span>Stats</span>
+    </a>
+    <a href="historique.html" id="nav-historique">
+      <span class="nav-icon">◷</span>
+      <span>Historique</span>
+    </a>
+    <a href="admin.html" id="nav-admin" style="display:none">
+      <span class="nav-icon">⚙</span>
+      <span>Admin</span>
+    </a>
+  </nav>
+  <script>
+    (function() {
+      const page = location.pathname.split("/").pop() || "index.html";
+      const map  = {
+        "index.html":      "nav-seance",
+        "preview.html":    "nav-seance",
+        "stats.html":      "nav-stats",
+        "historique.html": "nav-historique",
+        "admin.html":      "nav-admin"
+      };
+      const activeId = map[page];
+      if (activeId) {
+        const el = document.getElementById(activeId);
+        if (el) el.classList.add("active");
+      }
+      document.addEventListener("DOMContentLoaded", async () => {
+        if (typeof getCurrentUser === "function") {
+          const u = await getCurrentUser();
+          if (u?.role === "prof") {
+            const a = document.getElementById("nav-admin");
+            if (a) a.style.display = "flex";
+          }
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
